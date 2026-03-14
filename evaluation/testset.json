@@ -1,0 +1,302 @@
+[
+  {
+    "question": "What are the common symptoms and clinical presentations of primary umbilical and epigastric hernias?",
+    "ground_truth": "Patients with primary umbilical and epigastric hernias may not be aware of the hernia as it is often minimally symptomatic. These hernias are usually noticed due to their cosmetic appearance, with a common complaint being the appearance of a bulge. In smaller defects, the preperitoneal fat may become incarcerated, leading to tenderness to touch or pain. Larger defects involving bowel may present with obstructive symptoms.",
+    "relevant_page": 3446,
+    "page": 3446
+  },
+  {
+    "question": "When is preoperative cross-sectional imaging indicated for primary umbilical or epigastric hernias?",
+    "ground_truth": "Preoperative cross-sectional imaging is indicated for larger defects or when patients have symptoms that do not correlate with the clinical examination. It helps determine other etiologies for the presenting symptoms and demonstrates important anatomic relationships that guide operative planning.",
+    "relevant_page": 3446,
+    "page": 3446
+  },
+  {
+    "question": "What is the initial management approach for patients with Superior Mesenteric Artery Syndrome (SMAS) to alleviate obstructive symptoms and nutritional depletion?",
+    "ground_truth": "The initial management efforts in patients with SMAS should focus on alleviating obstructive symptoms and treating volume and nutritional depletion. This includes managing electrolyte imbalances with intravenous fluid rehydration and achieving gastroduodenal decompression through the passage of a nasogastric tube.",
+    "relevant_page": 618,
+    "page": 618
+  },
+  {
+    "question": "What dietary and positional modifications are recommended for patients with SMAS who are tolerant of oral intake?",
+    "ground_truth": "Patients tolerant of oral intake should have a modified diet of small meals administered more frequently. Accompanying postprandial postural changes, such as the left lateral decubitus, prone, and knee\u2013chest positions, may reduce pain associated with ingestion and facilitate the passage of food beyond the point of obstruction.",
+    "relevant_page": 618,
+    "page": 618
+  },
+  {
+    "question": "What is the significance of performing a fundoplication following PEH reduction and repair, according to the passage?",
+    "ground_truth": "Performing a fundoplication following PEH reduction and repair is significant because it may reduce the incidence of postoperative reflux. A limited RCT showed that the 1-year postoperative incidence of reflux with a positive DeMeester score or esophagitis was significantly higher in the nonfundoplication group (53% vs. 17%, P = .026). Additionally, fundoplication may serve as a bolster to prevent recurrent herniation or can be fixed to the diaphragm to prevent recurrence, although there is limited objective support for this theory.",
+    "relevant_page": 148,
+    "page": 148
+  },
+  {
+    "question": "How does preoperative manometry influence the decision-making process for the type of fundoplication in patients with PEH?",
+    "ground_truth": "Preoperative manometry, when able to be performed, can identify patients with severe esophageal dysmotility who may be at higher risk of dysphagia with a 360-degree Nissen fundoplication. This information can guide the decision to perform either a complete or partial fundoplication based on the risk of postoperative dysphagia.",
+    "relevant_page": 148,
+    "page": 148
+  },
+  {
+    "question": "What are the key management strategies for gastrointestinal leaks as mentioned in Fischer's Mastery of Surgery?",
+    "ground_truth": "The management of gastrointestinal leaks involves early diagnosis and appropriate intervention, which may include surgical repair or drainage, nutritional support, and antibiotics. The specific approach depends on the location and severity of the leak.",
+    "relevant_page": "1109 \u2013 1111",
+    "page": 3985
+  },
+  {
+    "question": "What are the main interventions for gastrointestinal bleeding according to Fischer's Mastery of Surgery?",
+    "ground_truth": "Interventions for gastrointestinal bleeding include endoscopic therapy, pharmacologic treatment, and in some cases, surgical intervention. The choice of intervention depends on the source and severity of the bleeding.",
+    "relevant_page": "2669 \u2013 2670",
+    "page": 3985
+  },
+  {
+    "question": "What is the clinical significance of the so-called lateral ligaments in pelvic surgery, according to the passage?",
+    "ground_truth": "The so-called lateral ligaments do not actually exist; instead, they are areas of adherence between the mesorectum medially and the autonomic nerve plexus laterally. This adherence tethers the rectum in the pelvis and prevents the surgeon from lifting it upwards. It is crucial to recognize this to avoid cutting nerves while mistaking them for ligaments.",
+    "relevant_page": 1468,
+    "page": 1468
+  },
+  {
+    "question": "During pelvic surgery, what is the recommended approach to handling the nerves and vessels in the area of adherence between the mesorectum and the plexus?",
+    "ground_truth": "The nerves passing into the mesorectum must be divided, but the accompanying vessels are small and typically require only a touch with the diathermy. If the correct plane is followed, there are usually no substantial middle rectal vessels arising directly from the internal iliacs.",
+    "relevant_page": 1468,
+    "page": 1468
+  },
+  {
+    "question": "What are the criteria for a patient with diverticulitis to be considered an ideal candidate for outpatient treatment?",
+    "ground_truth": "Patients who are ideal candidates for outpatient treatment are able to tolerate PO intake; reliable without cognitive, social, or psychiatric impairment; are not immunosuppressed; and have no signs of toxicity.",
+    "relevant_page": "1309",
+    "page": 1309
+  },
+  {
+    "question": "According to the passage, under what circumstances does the American Gastroenterological Association recommend antibiotic treatment for patients with uncomplicated diverticulitis?",
+    "ground_truth": "The American Gastroenterological Association recommends antibiotic treatment in patients with uncomplicated diverticulitis who have comorbidities or are frail, immune-suppressed patients, those who present with refractory symptoms or vomiting, or those who have a C-reactive protein >140.",
+    "relevant_page": "1309",
+    "page": 1309
+  },
+  {
+    "question": "What is a major factor associated with aggressive anal Crohn disease, and what is the consequence if it is not properly managed?",
+    "ground_truth": "A major factor associated with aggressive anal Crohn disease is the presence of anal stenosis. If not properly managed with stricture dilatation and effective medical treatment to decrease inflammation, it can lead to ongoing inflammation and a high chance of eventual fecal diversion, which may be permanent.",
+    "relevant_page": 1194,
+    "page": 1194
+  },
+  {
+    "question": "According to the passage, what are the factors associated with fecal incontinence in patients with Crohn disease?",
+    "ground_truth": "The factors associated with fecal incontinence in patients with Crohn disease include the presence of liquid stools, stricturing disease behavior, and diagnosis of perianal Crohn disease. Liquid stools are often associated with prior bowel resections.",
+    "relevant_page": 1194,
+    "page": 1194
+  },
+  {
+    "question": "What were the main reasons for the withdrawal of the initial intragastric balloon device from the market?",
+    "ground_truth": "The initial intragastric balloon device was withdrawn from the market due to a high incidence of complications, including migration and bowel obstruction, and because multiple randomized trials demonstrated no significant weight loss.",
+    "relevant_page": "761",
+    "page": 761
+  },
+  {
+    "question": "According to the Tarpon Springs Conference recommendations, what are the ideal properties of safe intragastric balloons (IGBs)?",
+    "ground_truth": "The ideal properties of safe intragastric balloons (IGBs) as recommended by the Tarpon Springs Conference include being smooth, adjustable, liquid-filled, composed of durable materials like silicone, and having a radiopaque marker to assist in locating the device in the event of migration.",
+    "relevant_page": "761",
+    "page": 761
+  },
+  {
+    "question": "What are the indications for robotic-assisted minimally invasive surgery as described in Fischer's Mastery of Surgery?",
+    "ground_truth": "The indications for robotic-assisted minimally invasive surgery are detailed on page 801.",
+    "relevant_page": "801",
+    "page": 3957
+  },
+  {
+    "question": "What are some potential complications associated with robotic-assisted minimally invasive surgery?",
+    "ground_truth": "The potential complications associated with robotic-assisted minimally invasive surgery are discussed on pages 806 to 807.",
+    "relevant_page": "806 \u2013 807",
+    "page": 3957
+  },
+  {
+    "question": "What is the initial dietary recommendation for patients experiencing dumping syndrome after a Roux-en-Y gastric bypass?",
+    "ground_truth": "Most patients do well with diets avoiding liquids when eating as well as avoiding any high sugar loads.",
+    "relevant_page": 577,
+    "page": 577
+  },
+  {
+    "question": "What pharmacological treatment can be considered for patients with persistent dumping syndrome after a gastric resection with vagotomy, and what is its expected success rate?",
+    "ground_truth": "A trial of octreotide given 30 minutes before each meal can be considered, and about 20% of such patients will have dramatic benefit.",
+    "relevant_page": 577,
+    "page": 577
+  },
+  {
+    "question": "What are the potential benefits of using robotic-assisted transabdominal preperitoneal repair (rTAPP) for inguinal hernias according to Proietti et al.?",
+    "ground_truth": "Proietti et al. discuss the learning curve associated with robotic-assisted transabdominal preperitoneal repair (rTAPP) for inguinal hernias, suggesting that with experience, the technique may offer benefits such as improved precision and potentially better outcomes compared to traditional methods.",
+    "relevant_page": 3659,
+    "page": 3659
+  },
+  {
+    "question": "According to Reinpold et al., what anatomical considerations are important for preventing chronic inguinodynia after hernia repair?",
+    "ground_truth": "Reinpold et al. highlight the importance of understanding the retroperitoneal anatomy of the iliohypogastric, ilioinguinal, genitofemoral, and lateral femoral cutaneous nerves to prevent and treat chronic inguinodynia following hernia repair.",
+    "relevant_page": 3659,
+    "page": 3659
+  },
+  {
+    "question": "What are the key components involved in the preoperative planning for cytoreductive surgery as mentioned in Fischer's Mastery of Surgery?",
+    "ground_truth": "The preoperative planning for cytoreductive surgery includes considerations on staging and surgical considerations, as well as the treatment algorithm for the procedure.",
+    "relevant_page": 998,
+    "page": 3981
+  },
+  {
+    "question": "What are the surgical considerations for gastric lumenal resection as described in Fischer's Mastery of Surgery?",
+    "ground_truth": "The surgical considerations for gastric lumenal resection include the mobilization and perfusion of the gastric conduit, as well as its transposition.",
+    "relevant_page": 998,
+    "page": 3981
+  },
+  {
+    "question": "What is the clinical significance of identifying an accessory, replaced, or aberrant right hepatic artery during portal vein dissection?",
+    "ground_truth": "An accessory, replaced, or aberrant right hepatic artery must not be injured because such an injury can greatly interfere with necessary blood flow to the liver after shunting.",
+    "relevant_page": 2943,
+    "page": 2943
+  },
+  {
+    "question": "Describe the technique used to facilitate the dissection of the portal vein as outlined in the passage.",
+    "ground_truth": "The technique involves retracting the common bile duct ventrally and medially with a vein retractor, using Russian forceps to grasp the portal vein, and employing a plastic Yankauer sucker to separate the portal vein from the posterior enveloping tissue. This method minimizes the risk of injuring side branches and speeds up the circumferential dissection of the portal vein.",
+    "relevant_page": 2943,
+    "page": 2943
+  },
+  {
+    "question": "What is the recommended surgical approach for gastric cancer when an R0 resection can be achieved, and why?",
+    "ground_truth": "A more conservative gastric resection, such as a subtotal gastrectomy, should be performed when an R0 resection can be achieved because it confers an equivalent survival rate with less morbidity and a better quality of life compared to a total gastrectomy.",
+    "relevant_page": 493,
+    "page": 493
+  },
+  {
+    "question": "Why might a total gastrectomy be necessary in the surgical treatment of gastric cancer?",
+    "ground_truth": "A total gastrectomy might be necessary to achieve an R0 resection, as positive resection margins (R1 resections) lead to worse survival outcomes.",
+    "relevant_page": 493,
+    "page": 493
+  },
+  {
+    "question": "What are the postoperative care protocols for recipients of living-donor liver transplantation with the right lobe in uncomplicated cases?",
+    "ground_truth": "In straightforward, uncomplicated transplant cases, many centers, including the one referenced in the passage, send patients directly to the floor postoperatively.",
+    "relevant_page": 3187,
+    "page": 3187
+  },
+  {
+    "question": "In what situations are recipients of living-donor liver transplantation transferred to the intensive care unit postoperatively?",
+    "ground_truth": "Recipients are transferred to the intensive care unit postoperatively in complicated cases or when the recipient remains intubated or on continuous renal replacement therapy (CRRT).",
+    "relevant_page": 3187,
+    "page": 3187
+  },
+  {
+    "question": "What is the recommended distance from the pylorus when performing an anastomosis to minimize bile reflux?",
+    "ground_truth": "It is important to maintain a distance of more than 5 cm from the pylorus when performing this anastomosis to minimize bile reflux.",
+    "relevant_page": 2261,
+    "page": 2261
+  },
+  {
+    "question": "What is the long-term risk associated with hepaticoenterostomy for benign biliary disease, and what surveillance might be warranted?",
+    "ground_truth": "In the setting of hepaticoenterostomy for benign biliary disease, there is a long-term risk of cholangiocarcinoma. Surveillance might be warranted, especially in the setting of a new onset of anastomotic stricture or recurrent cholangitis after 8 to 10 years, as the risk goes up to 5.5% after 30 years.",
+    "relevant_page": 2261,
+    "page": 2261
+  },
+  {
+    "question": "What is the most dangerous portion of the dissection during revisional hiatal operations, and what complications are most likely to be encountered?",
+    "ground_truth": "The most dangerous portion of the dissection is where the liver, anterior hiatal arch, and fundoplication meet. Complications most likely to be encountered include gastrotomy, esophagotomy, or bleeding from the liver.",
+    "relevant_page": 183,
+    "page": 183
+  },
+  {
+    "question": "What is the author's preferred initial approach for revisional hiatal operations, and why?",
+    "ground_truth": "The author prefers to initiate all revisional hiatal operations by encountering the plane between the caudate lobe and the base of the right crus, as there is usually a free plane in most patients at that point. This allows visualization of the right aspect of the anterior hiatal arch.",
+    "relevant_page": 183,
+    "page": 183
+  },
+  {
+    "question": "What are the potential complications associated with the use of foreign material at the hiatus during crural closure in revisional surgery?",
+    "ground_truth": "The use of foreign material at the hiatus is associated with at least a short-term improvement in the risk of hiatal hernia recurrence but is associated with a great increase in the complexity of reoperation.",
+    "relevant_page": 173,
+    "page": 173
+  },
+  {
+    "question": "What anatomical error in fundoplication construction is most commonly associated with fundoplication failure?",
+    "ground_truth": "The most common manifestation of fundoplication failure is a fundoplication constructed with the apex of the fundus on the right, and the upper body of the stomach on the left pillar of fundoplication, resulting in a fundoplication that straddles the GE junction or is around the cardia and can result in a two-compartment stomach.",
+    "relevant_page": 173,
+    "page": 173
+  },
+  {
+    "question": "What is the standard treatment approach for a patient with a potentially resectable, localized GIST without evidence of distant spread?",
+    "ground_truth": "Surgery is the standard of care treatment for potentially resectable, localized GIST without evidence of distant spread, with adjuvant target therapy in patients with a substantial risk of recurrence.",
+    "relevant_page": 534,
+    "page": 534
+  },
+  {
+    "question": "How should a patient with a GIST that requires extensive or multivisceral resection be managed preoperatively?",
+    "ground_truth": "When surgical resection is not feasible or requires an extensive or multivisceral resection, preoperative TKIs should be used, followed by surgical resection and completion of target therapy.",
+    "relevant_page": 534,
+    "page": 534
+  },
+  {
+    "question": "What is the recommended technique for removing the specimen during surgery in the intersphincteric plane?",
+    "ground_truth": "The removal of the specimen is carried out in the intersphincteric plane by beginning with a circular incision in the palpable groove between the internal and external sphincters using needlepoint electrocautery. Dissection should begin at the lateral aspects and proceed to connect posteriorly and then anteriorly.",
+    "relevant_page": 1175,
+    "page": 1175
+  },
+  {
+    "question": "How should the perineum be closed in the presence of significant perineal sepsis?",
+    "ground_truth": "In the presence of significant perineal sepsis, the skin edges and the subcutaneous tissues may be left open or a flap used to safely close the defect.",
+    "relevant_page": 1175,
+    "page": 1175
+  },
+  {
+    "question": "What is the contraindicated surgical procedure in patients with toxic megacolon, and why?",
+    "ground_truth": "It is contraindicated to perform an ileal pouch-anal anastomosis (IPAA) in someone with toxic megacolon due to the extreme fragility of the bowel wall.",
+    "relevant_page": "1241",
+    "page": 1241
+  },
+  {
+    "question": "What are the primary and secondary types of splenic cysts, and what are their common causes?",
+    "ground_truth": "Primary splenic cysts are benign, simple cysts often congenital, also known as splenic epithelial or epidermoid cysts. Secondary splenic cysts include nonparasitic splenic pseudocysts, which can develop following liquefactive necrosis of a splenic hematoma due to trauma or infarction, and hydatid cysts caused by Echinococcus granulosus infection.",
+    "relevant_page": 2703,
+    "page": 2703
+  },
+  {
+    "question": "What is the recommended postoperative screening protocol for LT recipients with inflammatory bowel disease (IBD) and primary sclerosing cholangitis (PSC) to monitor for colorectal cancer (CRC)?",
+    "ground_truth": "It is recommended to screen LT recipients with IBD and PSC postoperatively with an annual colonoscopy.",
+    "relevant_page": 3251,
+    "page": 3251
+  },
+  {
+    "question": "What are the indications for surgical intervention in patients with gastroesophageal reflux disease according to the passage?",
+    "ground_truth": "Surgical intervention is suggested for patients with symptomatic disease with significant anatomic disruption and hiatal hernia, or for those who fail medical therapy.",
+    "relevant_page": 155,
+    "page": 155
+  },
+  {
+    "question": "What are the considerations and techniques involved in reconstructing the right posterior branch of the hepatic artery during surgery for hilar tumors?",
+    "ground_truth": "Reconstruction to the right posterior branch of the hepatic artery is undertaken with caution due to the need for microvascular anastomosis. It requires a team familiar with microvascular techniques. If the proper hepatic artery is involved, it can be reconstructed using a venous graft like an ankle saphenous vein graft or by rotating the left hepatic artery if uninvolved. A segment of the splenic artery can also be used for reconstruction.",
+    "relevant_page": 3036,
+    "page": 3036
+  },
+  {
+    "question": "What is the recommended duration of venous thromboembolism prophylaxis for patients with a cancer diagnosis undergoing abdominopelvic procedures?",
+    "ground_truth": "For patients with a cancer diagnosis, venous thromboembolism prophylaxis is often continued prophylactically for approximately 30 days after an abdominopelvic procedure based on the Caprini score, unless otherwise specified.",
+    "relevant_page": 1074,
+    "page": 1074
+  },
+  {
+    "question": "What are the potential postoperative complications related to Nissen fundoplication as mentioned in the passage?",
+    "ground_truth": "Postoperative bloating is a potential complication related to Nissen fundoplication.",
+    "relevant_page": 3852,
+    "page": 3852
+  },
+  {
+    "question": "What is the indication for using the robotic single-dock Rives\u2013Stoppa technique in ventral hernia repair (VHR)?",
+    "ground_truth": "The robotic single-dock Rives\u2013Stoppa technique is used for retromuscular VHR for defects less than 7 cm.",
+    "relevant_page": 3498,
+    "page": 3498
+  },
+  {
+    "question": "What are the recommended techniques for managing large Type I abdominal wall defects following tumor resection?",
+    "ground_truth": "For large Type I defects, local advancement flaps and regional flaps are recommended. These should be performed by individuals trained in these procedures, most commonly plastic surgeons. Additionally, progressive tension sutures and drains may be used to decrease the risk of seromas and wound breakdown, and closed incisional negative pressure therapy should be considered to optimize wound healing and prevent surgical site infections.",
+    "relevant_page": 3776,
+    "page": 3776
+  },
+  {
+    "question": "What is a common mistake made during the early part of the operation when the patient is in a 30-degree left lateral decubitus position, and how can it be avoided?",
+    "ground_truth": "A common mistake is undertaking the dissection in a much too lateral direction, which deviates from the vena cava and can lead to unnecessary exposure of the renal capsule or hilum. This can be avoided by using the foramen of Winslow as a landmark to keep the dissection oriented correctly.",
+    "relevant_page": 2942,
+    "page": 2942
+  }
+]
