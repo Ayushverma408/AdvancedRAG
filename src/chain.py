@@ -58,6 +58,10 @@ def build_retriever(mode: str = "naive") -> object:
         from retriever_rerank import build_rerank_retriever
         return build_rerank_retriever()
 
+    if mode == "query_expansion":
+        from retriever_query_expansion import build_query_expansion_retriever
+        return build_query_expansion_retriever()
+
     # Default: naive dense retriever
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     vectorstore = Chroma(

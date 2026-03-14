@@ -12,7 +12,7 @@ from chain import build_chain, query_with_sources
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", default="naive", choices=["naive", "hybrid", "rerank"],
+    parser.add_argument("--mode", default="naive", choices=["naive", "hybrid", "rerank", "query_expansion"],
                         help="Retrieval mode")
     args = parser.parse_args()
 
