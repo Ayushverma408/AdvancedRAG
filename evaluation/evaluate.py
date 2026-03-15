@@ -17,6 +17,10 @@ import warnings
 import numpy as np
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
+# Seconds to sleep between questions — prevents TPM rate limit when running
+# multiple LLM calls per question (HyDE/decomposition generate 4-5 calls each)
+INTER_QUESTION_SLEEP = 2
+
 from dotenv import load_dotenv
 load_dotenv()
 sys.path.insert(0, "src")
@@ -63,6 +67,28 @@ def load_testset(path: str = "evaluation/testset.json") -> list[dict]:
         return json.load(f)
 
 
+def _invoke_with_retry(chain, retriever, question: str, max_retries: int = 5):
+    """Invoke chain+retriever with exponential backoff on rate limit errors."""
+    delay = 5
+    for attempt in range(max_retries):
+        try:
+            answer = chain.invoke(question)
+            docs = retriever.invoke(question)
+            ctx = [doc.page_content for doc in docs]
+            return answer, ctx
+        except Exception as e:
+            msg = str(e)
+            if "429" in msg or "rate_limit" in msg.lower() or "rate limit" in msg.lower():
+                wait = delay * (2 ** attempt)
+                print(f"    Rate limit hit — retrying in {wait}s (attempt {attempt+1}/{max_retries})")
+                time.sleep(wait)
+            else:
+                print(f"    ERROR: {e}")
+                return "", []
+    print(f"    Failed after {max_retries} retries")
+    return "", []
+
+
 def run_pipeline(testset: list[dict], chain, retriever) -> dict:
     """Run each question through the RAG pipeline, tracking latency and cost."""
     questions, answers, contexts, ground_truths = [], [], [], []
@@ -74,15 +100,11 @@ def run_pipeline(testset: list[dict], chain, retriever) -> dict:
         print(f"  [{i+1}/{len(testset)}] {q[:75]}...")
 
         t0 = time.perf_counter()
-        try:
-            answer = chain.invoke(q)
-            docs = retriever.invoke(q)
-            ctx = [doc.page_content for doc in docs]
-        except Exception as e:
-            print(f"    ERROR: {e}")
-            answer = ""
-            ctx = []
+        answer, ctx = _invoke_with_retry(chain, retriever, q)
         latency = time.perf_counter() - t0
+
+        if i < len(testset):
+            time.sleep(INTER_QUESTION_SLEEP)
 
         cost_info = estimate_query_cost(q, ctx, answer)
         latencies.append(round(latency, 3))

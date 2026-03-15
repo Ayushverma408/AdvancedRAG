@@ -19,16 +19,16 @@ from langchain_core.retrievers import BaseRetriever
 from typing import List
 
 CHROMA_DIR = "chroma_db"
-COLLECTION_NAME = "fischer_surgery"
+DEFAULT_COLLECTION = "fischer_surgery"
 TOP_K = 6
 RRF_K = 60  # standard RRF constant
 
 
-def load_all_chunks():
+def load_all_chunks(collection: str = DEFAULT_COLLECTION):
     """Pull all stored chunks from Chroma (no re-embedding needed)."""
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     vs = Chroma(
-        collection_name=COLLECTION_NAME,
+        collection_name=collection,
         embedding_function=embeddings,
         persist_directory=CHROMA_DIR,
     )
@@ -85,8 +85,8 @@ class HybridRetriever(BaseRetriever):
         return merged[: self.k]
 
 
-def build_hybrid_retriever(k: int = TOP_K) -> HybridRetriever:
-    docs, vectorstore = load_all_chunks()
+def build_hybrid_retriever(k: int = TOP_K, collection: str = DEFAULT_COLLECTION) -> HybridRetriever:
+    docs, vectorstore = load_all_chunks(collection)
 
     bm25 = BM25Retriever.from_documents(docs, k=k * 3)
 

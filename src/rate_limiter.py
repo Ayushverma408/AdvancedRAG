@@ -109,7 +109,13 @@ class ProductRateLimiter:
         Call before processing each request.
         Raises RateLimitExceeded if any limit is breached.
         Records the request on success.
+
+        Set SKIP_RATE_LIMIT=true in environment to bypass (local dev / evaluation).
         """
+        import os
+        if os.getenv("SKIP_RATE_LIMIT", "").lower() in ("1", "true", "yes"):
+            return
+
         with self._lock:
             self._maybe_reset_day()
             self._prune_minute_window()

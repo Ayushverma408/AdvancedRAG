@@ -65,7 +65,7 @@ class RerankRetriever(BaseRetriever):
         return [doc for _, doc in scored[: self.final_k]]
 
 
-def build_rerank_retriever(fetch_k: int = FETCH_K, final_k: int = FINAL_K) -> RerankRetriever:
+def build_rerank_retriever(fetch_k: int = FETCH_K, final_k: int = FINAL_K, collection: str = "fischer_surgery") -> RerankRetriever:
     from retriever_hybrid import build_hybrid_retriever
-    hybrid = build_hybrid_retriever(k=fetch_k)
+    hybrid = build_hybrid_retriever(k=fetch_k, collection=collection)
     return RerankRetriever(hybrid_retriever=hybrid, fetch_k=fetch_k, final_k=final_k)

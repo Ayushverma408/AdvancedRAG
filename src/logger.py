@@ -1,41 +1,67 @@
 """
-Centralised logger for the Surgery RAG API.
-- Writes structured JSON logs to logs/api.log (rotating, 10MB × 5 files)
-- Also streams human-readable lines to stdout
-- Import get_logger() anywhere to get the same logger instance
+Centralised logger for the Book RAG API.
+- Timestamps in IST (UTC+5:30)
+- Structured JSON logs → logs/api.log (rotating 10MB × 5 files)
+- Human-readable coloured stdout
+- Import get_logger() anywhere to get the same instance
 """
 
 import logging
 import logging.handlers
 import json
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
+LOG_DIR   = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
+LOG_FILE  = os.path.join(LOG_DIR, "api.log")
+MAX_BYTES    = 10 * 1024 * 1024   # 10 MB per file
+BACKUP_COUNT = 5
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logs")
-LOG_FILE = os.path.join(LOG_DIR, "api.log")
-MAX_BYTES = 10 * 1024 * 1024   # 10 MB per file
-BACKUP_COUNT = 5                # keep 5 rotated files
+IST = timezone(timedelta(hours=5, minutes=30))
+
+# Fields that are internal to LogRecord — never forwarded as extras
+_SKIP_KEYS = frozenset({
+    "name", "msg", "args", "levelname", "levelno",
+    "pathname", "filename", "module", "exc_info",
+    "exc_text", "stack_info", "lineno", "funcName",
+    "created", "msecs", "relativeCreated", "thread",
+    "threadName", "processName", "process", "message",
+    "taskName",
+})
+
+# Extra fields we want to surface on stdout (in order)
+_HUMAN_FIELDS = [
+    "event",
+    "book_key",
+    "pipeline",
+    "question",
+    "question_preview",
+    "answer_preview",
+    "latency_total_s",
+    "latency_retrieval_s",
+    "latency_llm_s",
+    "chunks_returned",
+    "pages",
+    "cost_usd",
+    "request_id",
+    "rl_daily_count",
+    "rl_daily_remaining",
+    "rl_minute_count",
+]
 
 
 class JSONFormatter(logging.Formatter):
-    """Emit each log record as a single JSON line."""
+    """One JSON object per line — every extra field included."""
 
     def format(self, record: logging.LogRecord) -> str:
         payload = {
-            "ts": datetime.now(timezone.utc).isoformat(),
+            "ts":    datetime.now(IST).isoformat(),
             "level": record.levelname,
-            "msg": record.getMessage(),
+            "msg":   record.getMessage(),
         }
-        # Any extra fields passed via extra={} are merged in
+
         for key, val in record.__dict__.items():
-            if key.startswith("_") or key in (
-                "name", "msg", "args", "levelname", "levelno",
-                "pathname", "filename", "module", "exc_info",
-                "exc_text", "stack_info", "lineno", "funcName",
-                "created", "msecs", "relativeCreated", "thread",
-                "threadName", "processName", "process", "message",
-            ):
+            if key in _SKIP_KEYS or key.startswith("_"):
                 continue
             payload[key] = val
 
@@ -53,54 +79,67 @@ class HumanFormatter(logging.Formatter):
         "ERROR":    "\033[31m",   # red
         "CRITICAL": "\033[35m",   # magenta
     }
-    RESET = "\033[0m"
+    RESET  = "\033[0m"
+    DIM    = "\033[2m"
+    BOLD   = "\033[1m"
 
     def format(self, record: logging.LogRecord) -> str:
         colour = self.COLOURS.get(record.levelname, "")
-        ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
-        base = f"{colour}[{ts}] {record.levelname:<8}{self.RESET} {record.getMessage()}"
+        ts     = datetime.now(IST).strftime("%d %b %Y  %I:%M:%S %p IST")
 
-        extras = {
-            k: v for k, v in record.__dict__.items()
-            if k.startswith("rl_") or k in (
-                "pipeline", "latency_total_s", "question_preview",
-                "cost_usd", "event"
-            )
-        }
-        if extras:
-            extra_str = "  " + "  ".join(f"{k}={v}" for k, v in extras.items())
-            base += extra_str
+        header = (
+            f"{colour}{self.BOLD}[{record.levelname}]{self.RESET}"
+            f"{self.DIM}  {ts}{self.RESET}"
+            f"  {record.getMessage()}"
+        )
 
-        return base
+        parts = []
+        rec_dict = record.__dict__
+
+        for field in _HUMAN_FIELDS:
+            val = rec_dict.get(field)
+            if val is None:
+                continue
+            # Pages list → compact string
+            if field == "pages" and isinstance(val, list):
+                val = ", ".join(f"p.{p}" for p in val)
+            # Costs → nicely formatted
+            if field == "cost_usd":
+                val = f"${val:.6f}"
+            parts.append(f"  {self.DIM}{field}{self.RESET}={self.BOLD}{val}{self.RESET}")
+
+        if record.exc_info:
+            parts.append(f"\n{self.COLOURS['ERROR']}{self.formatException(record.exc_info)}{self.RESET}")
+
+        return header + "".join(parts)
 
 
 def _build_logger() -> logging.Logger:
     os.makedirs(LOG_DIR, exist_ok=True)
-    logger = logging.getLogger("surgery_rag")
+    logger = logging.getLogger("book_rag")
 
-    if logger.handlers:   # already initialised (e.g. on hot-reload)
+    if logger.handlers:   # already initialised (hot-reload guard)
         return logger
 
     logger.setLevel(logging.DEBUG)
 
-    # Rotating JSON file handler
-    file_handler = logging.handlers.RotatingFileHandler(
+    # ── Rotating JSON file (DEBUG+) ──────────────────────────────────────
+    fh = logging.handlers.RotatingFileHandler(
         LOG_FILE, maxBytes=MAX_BYTES, backupCount=BACKUP_COUNT, encoding="utf-8"
     )
-    file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(JSONFormatter())
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(JSONFormatter())
 
-    # Human-readable stdout handler
-    stream_handler = logging.StreamHandler()
-    stream_handler.setLevel(logging.INFO)
-    stream_handler.setFormatter(HumanFormatter())
+    # ── Coloured stdout (INFO+) ──────────────────────────────────────────
+    sh = logging.StreamHandler()
+    sh.setLevel(logging.INFO)
+    sh.setFormatter(HumanFormatter())
 
-    logger.addHandler(file_handler)
-    logger.addHandler(stream_handler)
+    logger.addHandler(fh)
+    logger.addHandler(sh)
     return logger
 
 
-# Module-level singleton
 log = _build_logger()
 
 

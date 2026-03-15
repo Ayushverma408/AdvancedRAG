@@ -91,8 +91,9 @@ def build_query_expansion_retriever(
     num_variants: int = NUM_VARIANTS,
     fetch_k_per_query: int = FETCH_K_PER_QUERY,
     final_k: int = FINAL_K,
+    collection: str = "fischer_surgery",
 ) -> QueryExpansionRetriever:
-    hybrid = build_hybrid_retriever(k=fetch_k_per_query)
+    hybrid = build_hybrid_retriever(k=fetch_k_per_query, collection=collection)
     llm = ChatOpenAI(model="gpt-4o", temperature=0.3)  # slight temp for variant diversity
 
     return QueryExpansionRetriever(
