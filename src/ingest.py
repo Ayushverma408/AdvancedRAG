@@ -32,6 +32,7 @@ from langchain_chroma import Chroma
 
 sys.path.insert(0, os.path.dirname(__file__))
 from books import get_book, all_books
+from image_index import extract_images
 
 load_dotenv()
 
@@ -206,6 +207,11 @@ def ingest_book(key: str):
     docs = load_file(path, name)
     chunks = chunk_documents(docs)
     build_vectorstore(chunks, collection)
+
+    if os.path.splitext(path)[1].lower() == ".pdf":
+        print("  Extracting images...")
+        extract_images(path, collection)
+
     print(f"  ✓ {key} ingested successfully.\n")
 
 

@@ -9,6 +9,7 @@ from langchain_chroma import Chroma
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.output_parsers import StrOutputParser
+from image_index import lookup_images
 
 load_dotenv()
 
@@ -133,9 +134,10 @@ def build_generator(
     return prompt | llm | StrOutputParser()
 
 
-def query_with_sources(question: str, chain, retriever):
-    """Run query and also return source pages for transparency."""
+def query_with_sources(question: str, chain, retriever, collection: str = DEFAULT_COLLECTION):
+    """Run query and return source pages + any images from those pages."""
     answer = chain.invoke(question)
     source_docs = retriever.invoke(question)
     sources = sorted(set(doc.metadata.get("page", "?") for doc in source_docs))
-    return answer, sources
+    images = lookup_images(sources, collection)
+    return answer, sources, images

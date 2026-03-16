@@ -25,18 +25,20 @@ RRF_K = 60  # standard RRF constant
 
 
 def load_all_chunks(collection: str = DEFAULT_COLLECTION):
-    """Pull all stored chunks from Chroma (no re-embedding needed)."""
+    """Pull all stored chunks from Chroma in batches (avoids SQLite variable limit)."""
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     vs = Chroma(
         collection_name=collection,
         embedding_function=embeddings,
         persist_directory=CHROMA_DIR,
     )
-    raw = vs.get()
-    docs = [
-        Document(page_content=text, metadata=meta)
-        for text, meta in zip(raw["documents"], raw["metadatas"])
-    ]
+    total = vs._collection.count()
+    batch_size = 5000
+    docs = []
+    for offset in range(0, total, batch_size):
+        raw = vs.get(limit=batch_size, offset=offset, include=["documents", "metadatas"])
+        for text, meta in zip(raw["documents"], raw["metadatas"]):
+            docs.append(Document(page_content=text, metadata=meta))
     print(f"Loaded {len(docs)} chunks for BM25 index")
     return docs, vs
 

@@ -50,10 +50,18 @@ def main():
 
         print("\nThinking...\n")
         try:
-            answer, source_pages = query_with_sources(question, chain, retriever)
+            answer, source_pages, images = query_with_sources(question, chain, retriever)
             print(f"Answer:\n{answer}")
             if show_sources:
                 print(f"\nRetrieved from pages: {source_pages}")
+                if images:
+                    print(f"\nRelated images ({len(images)}):")
+                    for img in images:
+                        caption = img.get("caption", "")
+                        label = f"  {img['path']}"
+                        if caption:
+                            label += f"\n    Caption: {caption}"
+                        print(label)
         except Exception as e:
             print(f"Error: {e}")
 

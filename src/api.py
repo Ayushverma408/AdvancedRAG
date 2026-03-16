@@ -24,6 +24,7 @@ from dotenv import load_dotenv
 from logger import get_logger
 from rate_limiter import limiter, RateLimitExceeded
 from books import get_book, all_books
+from image_index import lookup_images
 
 load_dotenv()
 
@@ -231,7 +232,11 @@ async def query_stream(req: QueryRequest, request: Request):
             }
             for doc in docs
         ]
-        pages = sorted(set(c["page"] for c in chunks))
+        pages  = sorted(set(c["page"] for c in chunks))
+        images = [
+            {"path": os.path.abspath(e["path"]), "caption": e["caption"]}
+            for e in lookup_images(pages, book["collection"])
+        ]
 
         log.info(
             f"Retrieval done — {len(chunks)} chunks in {t_retrieval}s",
@@ -300,6 +305,7 @@ async def query_stream(req: QueryRequest, request: Request):
             "answer":              answer,
             "chunks":              chunks,
             "pages":               pages,
+            "images":              images,
             "book_key":            req.book_key,
             "pipeline":            PIPELINE_MODE,
             "latency_retrieval_s": t_retrieval,
