@@ -227,7 +227,7 @@ if __name__ == "__main__":
         print("\nAvailable books:")
         for b in all_books():
             status = "✓" if os.path.exists(b["pdf_path"]) else "✗ (file missing)"
-            print(f"  {b['key']:<25} {b['icon']}  {b['display_name']}  [{status}]")
+            print(f"  {b['key']:<25} {b['display_name']}  [{status}]")
         sys.exit(0)
 
     if args.book:

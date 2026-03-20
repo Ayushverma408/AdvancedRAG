@@ -5,5 +5,8 @@ __pycache__/
 *.pyc
 data/raw/
 data/processed/
+data/images/
 chroma_db/
 *.pdf
+.DS_Store
+.chainlit/

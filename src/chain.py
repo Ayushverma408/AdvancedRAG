@@ -35,15 +35,36 @@ Context from the book:
 {{context}}
 """
 
+MULTI_BOOK_SYSTEM_PROMPT = """You are a precise medical reference assistant with access to multiple surgical textbooks.
+
+Your job is to answer questions using ONLY the context provided below.
+
+RULES:
+1. Use ONLY information explicitly stated in the provided context. Do not use prior knowledge.
+2. Synthesize and organize the relevant information into a clear, well-structured answer.
+3. Cite sources inline with both book name and page, e.g. (Fischer's Mastery of Surgery, Page 42) \
+or (Sabiston Textbook of Surgery, Page 157), wherever you reference information.
+4. If multiple books cover the same topic, synthesize them and note where they agree or differ.
+5. If the context contains partial information, provide what is available and note what is incomplete.
+6. ONLY if there is truly NO relevant information in the context at all, say:
+   "This specific information is not found in the retrieved sections. Try rephrasing your question."
+7. Do not speculate, infer, or add information beyond what is written in the context.
+
+Context from the books:
+{context}
+"""
+
 HUMAN_PROMPT = "{question}"
 
 
 def format_docs(docs):
-    """Format retrieved docs with page citations."""
+    """Format retrieved docs with book name and page citations."""
     parts = []
     for doc in docs:
-        page = doc.metadata.get("page", "?")
-        parts.append(f"[Page {page}]\n{doc.page_content}")
+        page      = doc.metadata.get("page", "?")
+        book_name = doc.metadata.get("source", "")
+        label     = f"{book_name}, Page {page}" if book_name else f"Page {page}"
+        parts.append(f"[{label}]\n{doc.page_content}")
     return "\n\n---\n\n".join(parts)
 
 
@@ -129,6 +150,20 @@ def build_generator(
     prompt = ChatPromptTemplate.from_messages([
         ("system", system_with_book),
         ("human", HUMAN_PROMPT),
+    ])
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    return prompt | llm | StrOutputParser()
+
+
+def build_multi_book_generator():
+    """
+    Build the LLM generation step for multi-book mode.
+    Expects input dict: {"context": formatted_str, "question": str}
+    Uses MULTI_BOOK_SYSTEM_PROMPT — citations include book name + page.
+    """
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", MULTI_BOOK_SYSTEM_PROMPT),
+        ("human", "{question}"),
     ])
     llm = ChatOpenAI(model="gpt-4o", temperature=0)
     return prompt | llm | StrOutputParser()
