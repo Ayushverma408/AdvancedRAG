@@ -37,11 +37,23 @@ _HUMAN_FIELDS = [
     "question",
     "question_preview",
     "answer_preview",
-    "latency_total_s",
+    # Retrieval sub-phase timings (from retriever_multi.py)
+    "latency_hyde_s",
+    "latency_embed_s",
     "latency_retrieval_s",
+    "latency_rrf_s",
+    "latency_rerank_s",
+    # Total timings
+    "latency_total_s",
     "latency_llm_s",
+    # Retrieval detail
+    "books_retrieved",
+    "total_candidates",
     "chunks_returned",
+    "pairs_scored",
     "pages",
+    "collection",
+    # Cost & rate limit
     "cost_usd",
     "request_id",
     "rl_daily_count",

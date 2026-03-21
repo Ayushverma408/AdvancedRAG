@@ -80,10 +80,13 @@ async def lifespan(app: FastAPI):
         extra={"event": "startup", "pipeline": PIPELINE_MODE,
                "books": [b["collection"] for b in medical_books()]},
     )
-    # Warm up pipeline at startup so first user query isn't slow
+    # Warm up pipeline + cross-encoder at startup so first query pays no cold-start cost
     import asyncio
+    from retriever_rerank import get_cross_encoder
     loop = asyncio.get_event_loop()
     await loop.run_in_executor(None, get_or_build_multi_pipeline)
+    await loop.run_in_executor(None, get_cross_encoder)
+    log.info("Cross-encoder warmed up", extra={"event": "cross_encoder_ready"})
     yield
     log.info("API shutting down", extra={"event": "shutdown"})
 
@@ -103,6 +106,7 @@ class QueryRequest(BaseModel):
     book_key: Optional[str] = None   # ignored — multi-book mode searches all books
     pipeline: Optional[str] = None   # ignored — pipeline is fixed to multi-book-hyde
     free_mode: bool = False           # skip RAG; answer directly from GPT-4o knowledge
+    use_hyde: bool = True             # False = fast mode: skip HyDE, embed query only (~4s faster)
 
 
 class ChunkResponse(BaseModel):
@@ -216,12 +220,16 @@ async def query_stream(req: QueryRequest, request: Request):
             return
 
         # ── Phase 1: Retrieval ────────────────────────────────────────────
-        yield _sse({"phase": "retrieving", "pipeline": PIPELINE_MODE})
+        use_hyde      = req.use_hyde
+        pipeline_used = "multi-book-hyde" if use_hyde else "multi-book-fast"
+        yield _sse({"phase": "retrieving", "pipeline": pipeline_used})
 
         t0 = time.perf_counter()
         try:
             retriever, _ = get_or_build_multi_pipeline()
-            docs = await loop.run_in_executor(None, retriever.invoke, question)
+            docs, ret_timings = await loop.run_in_executor(
+                None, retriever.retrieve, question, use_hyde
+            )
         except Exception:
             log.error("Retrieval failed",
                       extra={"event": "retrieval_error", "request_id": request_id,
@@ -287,10 +295,15 @@ async def query_stream(req: QueryRequest, request: Request):
             "chunks":              chunks,
             "pages":               pages,
             "images":              images,
-            "pipeline":            PIPELINE_MODE,
+            "pipeline":            pipeline_used,
             "latency_retrieval_s": t_retrieval,
             "latency_llm_s":       t_llm,
             "latency_total_s":     t_total,
+            # sub-phase breakdown from retriever
+            "latency_hyde_s":      ret_timings.get("latency_hyde_s", 0),
+            "latency_embed_s":     ret_timings.get("latency_embed_s", 0),
+            "latency_search_s":    ret_timings.get("latency_retrieval_s", 0),
+            "latency_rerank_s":    ret_timings.get("latency_rerank_s", 0),
         })
 
     return StreamingResponse(event_gen(), media_type="text/event-stream")
@@ -357,11 +370,11 @@ def query(req: QueryRequest):
 # ── PDF page preview ──────────────────────────────────────────────────────────
 
 @app.get("/page/{collection}/{page_num}")
-def get_page_image(collection: str, page_num: int, dpi: int = 150):
+def get_page_image(collection: str, page_num: int, dpi: int = 150, highlight: str = ""):
     """
     Render a single PDF page as a PNG and return it.
     page_num is 1-indexed (matches the page metadata stored at ingest time).
-    Used by the Chainlit UI for the page-preview feature.
+    highlight: optional chunk text snippet — matched on the page and highlighted in yellow.
     """
     try:
         book = get_book_by_collection(collection)
@@ -378,9 +391,28 @@ def get_page_image(collection: str, page_num: int, dpi: int = 150):
 
     # page_num is 1-indexed; clamp to valid range
     idx = max(0, min(page_num - 1, total - 1))
+    page = doc[idx]
+
+    # Yellow highlight — normalize whitespace then try progressively shorter substrings
+    if highlight:
+        import re
+        # Collapse newlines/tabs/multiple spaces into single space; strip leading/trailing
+        normalized = re.sub(r"\s+", " ", highlight).strip()
+        # Try substrings of decreasing length until something matches in the PDF
+        for start, length in [(0, 120), (0, 80), (20, 80), (0, 50), (0, 35)]:
+            snippet = normalized[start : start + length].strip()
+            if len(snippet) < 20:
+                break
+            rects = page.search_for(snippet)
+            if rects:
+                for rect in rects:
+                    annot = page.add_highlight_annot(rect)
+                    annot.set_colors(stroke=[1, 1, 0])  # yellow
+                    annot.update()
+                break  # stop after first successful match
 
     mat = fitz.Matrix(dpi / 72, dpi / 72)
-    pix = doc[idx].get_pixmap(matrix=mat)
+    pix = page.get_pixmap(matrix=mat)
     png_bytes = pix.tobytes("png")
     doc.close()
 

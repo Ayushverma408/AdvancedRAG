@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────────
 #  medrag.sh  —  Start / stop the Medical RAG stack
-#  Usage:
+#  Run from inside advanced-rag-poc/:
 #    ./medrag.sh          → kill any running instances, start fresh
 #    ./medrag.sh stop     → kill everything, exit
 # ──────────────────────────────────────────────────────────────
@@ -12,6 +12,7 @@ API_DIR="$(cd "$(dirname "$0")" && pwd)"
 UI_DIR="$(cd "$(dirname "$0")/../surgery-rag-ui" && pwd)"
 API_LOG="/tmp/rag_api.log"
 UI_LOG="/tmp/rag_ui.log"
+CF_LOG="/tmp/rag_cf.log"
 
 # ── colours ───────────────────────────────────────────────────
 BOLD="\033[1m"; RESET="\033[0m"
@@ -37,6 +38,12 @@ stop_services() {
             killed=1
         fi
     done
+    # Kill any running cloudflared tunnel
+    if pgrep -f "cloudflared tunnel run medrag" >/dev/null 2>&1; then
+        pkill -f "cloudflared tunnel run medrag" 2>/dev/null
+        warn "Killed existing cloudflared tunnel"
+        killed=1
+    fi
     [[ $killed -eq 1 ]] && sleep 1
 }
 
@@ -69,7 +76,7 @@ wait_for_ui() {
 
 # ── stop-only mode ────────────────────────────────────────────
 if [[ "$1" == "stop" ]]; then
-    if is_running $API_PORT || is_running $UI_PORT; then
+    if is_running $API_PORT || is_running $UI_PORT || pgrep -f "cloudflared tunnel run medrag" >/dev/null 2>&1; then
         stop_services
         success "All services stopped."
     else
@@ -125,11 +132,29 @@ echo ""
 info "Opening browser…"
 open "http://localhost:${UI_PORT}"
 
+# ── Start Cloudflare tunnel ───────────────────────────────────
+echo ""
+if command -v cloudflared >/dev/null 2>&1; then
+    info "Starting Cloudflare tunnel  (medrag.shuf.site)…"
+    nohup cloudflared tunnel run medrag > "$CF_LOG" 2>&1 &
+    CF_PID=$!
+    sleep 3
+    if pgrep -f "cloudflared tunnel run medrag" >/dev/null 2>&1; then
+        success "Tunnel live  ✓  (PID $CF_PID)  →  https://medrag.shuf.site"
+    else
+        warn "Tunnel did not start. Check logs: $CF_LOG"
+    fi
+else
+    warn "cloudflared not found — skipping tunnel (install: brew install cloudflared)"
+fi
+
 echo ""
 echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 success "Stack is live at ${BOLD}http://localhost:${UI_PORT}${RESET}"
-echo -e "  API logs : ${API_LOG}"
-echo -e "  UI logs  : ${UI_LOG}"
-echo -e "  To stop  : ${BOLD}./medrag.sh stop${RESET}"
+echo -e "  Public URL : ${BOLD}https://medrag.shuf.site${RESET}"
+echo -e "  API logs   : ${API_LOG}"
+echo -e "  UI logs    : ${UI_LOG}"
+echo -e "  CF logs    : ${CF_LOG}"
+echo -e "  To stop    : ${BOLD}./medrag.sh stop${RESET}"
 echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 echo ""

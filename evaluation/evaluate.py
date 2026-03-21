@@ -7,6 +7,9 @@ Usage:
     python evaluation/evaluate.py --pipeline hybrid
     python evaluation/evaluate.py --pipeline rerank
     python evaluation/evaluate.py --compare
+
+Quick mode (< 3 min, uses 10 questions + gpt-4o-mini for RAGAS scoring):
+    python evaluation/evaluate.py --pipeline hyde --quick
 """
 
 import sys
@@ -20,6 +23,11 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 # Seconds to sleep between questions — prevents TPM rate limit when running
 # multiple LLM calls per question (HyDE/decomposition generate 4-5 calls each)
 INTER_QUESTION_SLEEP = 2
+
+# Quick-mode defaults: smaller testset + cheaper/faster model for RAGAS scoring
+QUICK_N_QUESTIONS  = 10
+QUICK_RAGAS_MODEL  = "gpt-4o-mini"   # ~10x cheaper, ~5x faster than gpt-4o
+FULL_RAGAS_MODEL   = "gpt-4o"
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -132,19 +140,31 @@ def safe_mean(val) -> float:
     return round(float(val), 4)
 
 
-def run_evaluation(pipeline_name: str, testset_path: str = "evaluation/testset.json"):
+def run_evaluation(
+    pipeline_name: str,
+    testset_path: str = "evaluation/testset.json",
+    quick: bool = False,
+    ragas_model: str | None = None,
+):
     print(f"\n{'='*60}")
     print(f"Evaluating pipeline: {pipeline_name.upper()}")
+    if quick:
+        print(f"Mode: QUICK ({QUICK_N_QUESTIONS} questions, RAGAS={QUICK_RAGAS_MODEL})")
     print(f"{'='*60}")
 
     testset = load_testset(testset_path)
+    if quick:
+        # Use first N questions for a fast representative sample
+        testset = testset[:QUICK_N_QUESTIONS]
     print(f"Loaded {len(testset)} test questions")
 
     print("\nRunning pipeline...")
     chain, retriever = build_chain(mode=pipeline_name)
     results = run_pipeline(testset, chain, retriever)
 
-    print("\nRunning RAGAS scoring...")
+    # Choose RAGAS scoring model: explicit arg > quick default > full default
+    _ragas_model = ragas_model or (QUICK_RAGAS_MODEL if quick else FULL_RAGAS_MODEL)
+    print(f"\nRunning RAGAS scoring (model={_ragas_model})...")
     dataset = Dataset.from_dict({
         "question": results["question"],
         "answer": results["answer"],
@@ -152,7 +172,7 @@ def run_evaluation(pipeline_name: str, testset_path: str = "evaluation/testset.j
         "ground_truth": results["ground_truth"],
     })
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model=_ragas_model, temperature=0)
     emb = OpenAIEmbeddings(model="text-embedding-3-small")
 
     scores = evaluate(
@@ -194,12 +214,13 @@ def run_evaluation(pipeline_name: str, testset_path: str = "evaluation/testset.j
         ]
     }
 
-    out_path = f"evaluation/results_{pipeline_name}.json"
+    suffix = "_quick" if quick else ""
+    out_path = f"evaluation/results_{pipeline_name}{suffix}.json"
     with open(out_path, "w") as f:
         json.dump(output, f, indent=2)
 
     print(f"\n{'='*60}")
-    print(f"RESULTS: {pipeline_name.upper()}")
+    print(f"RESULTS: {pipeline_name.upper()}{' (QUICK)' if quick else ''}")
     print(f"{'='*60}")
     print(f"  Quality:")
     print(f"    Faithfulness      : {score_dict['faithfulness']:.4f}  (no hallucination)")
@@ -259,9 +280,18 @@ if __name__ == "__main__":
                         help="Pipeline name (naive, hybrid, rerank, query_expansion, etc.)")
     parser.add_argument("--compare", action="store_true", help="Show comparison table")
     parser.add_argument("--testset", default="evaluation/testset.json")
+    parser.add_argument(
+        "--quick", action="store_true",
+        help=f"Fast mode: only {QUICK_N_QUESTIONS} questions, RAGAS scored with {QUICK_RAGAS_MODEL}. "
+             f"Completes in ~2-3 min vs ~15 min for full run.",
+    )
+    parser.add_argument(
+        "--ragas-model", default=None,
+        help=f"Override the model used for RAGAS scoring (default: {FULL_RAGAS_MODEL}, quick default: {QUICK_RAGAS_MODEL})",
+    )
     args = parser.parse_args()
 
     if args.compare:
         compare_results()
     else:
-        run_evaluation(args.pipeline, args.testset)
+        run_evaluation(args.pipeline, args.testset, quick=args.quick, ragas_model=args.ragas_model)
