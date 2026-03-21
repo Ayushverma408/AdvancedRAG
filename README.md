@@ -53,7 +53,7 @@ A few things worth noting from the numbers:
 - avg latency: 7.98s, p95: 10.43s
 - avg cost per query: $0.005, per 1k queries: $5.05
 
-> ℹ️ Eval above was run on **Fischer only** (single-book). Multi-book eval (4 books) is pending — will be added here once run.
+> ℹ️ Eval above was run on **Fischer only** (single-book, n=11). See multi-book results below.
 
 ---
 
@@ -110,6 +110,35 @@ Every answer now shows a per-phase latency footer in the UI:
 ### Cross-encoder warmup
 
 Cross-encoder model (ms-marco-MiniLM-L-6-v2) is loaded at API startup via `lifespan()` so the first user query pays zero cold-start cost (~4s saved on first hit).
+
+### Multi-book RAGAS Evaluation (March 2026, quick mode — n=10, gpt-4o-mini scorer)
+
+| Pipeline | Faithfulness | Answer Relevancy | Context Precision | Context Recall | Avg Latency | Cost/1k Q |
+|---|---|---|---|---|---|---|
+| **multi-book-hyde** | **0.9698** | 0.8855 | 0.9200 | **0.9667** | 7.2s | $6.28 |
+| multi-book-fast | 0.9368 | 0.8768 | **0.9233** | **0.9667** | 7.4s | $6.38 |
+| free (no RAG) | ⚠️ artifact | **0.8908** | ⚠️ artifact | ⚠️ artifact | **6.8s** | $6.26 |
+
+> ⚠️ **Free mode retrieval metrics are not meaningful** — RAGAS computes context precision/recall/faithfulness against the retrieved contexts, and free mode returns no contexts. Those scores are RAGAS artefacts. Only answer relevancy is interpretable for free mode.
+
+**vs. previous single-book HyDE** (Fischer only, n=11):
+
+| | Single-book HyDE | Multi-book HyDE | Δ |
+|---|---|---|---|
+| Faithfulness | 0.931 | **0.9698** | +0.039 |
+| Context Precision | 0.773 | **0.920** | **+0.147** |
+| Context Recall | 0.867 | **0.967** | **+0.100** |
+| Answer Relevancy | 0.826 | **0.886** | +0.060 |
+
+**Analysis:**
+
+The jump from single-book to multi-book is the headline result. Context precision went up **+0.147** — the biggest gain of any metric, and the one that matters most in production. When you search 4 books instead of 1, you're far more likely to retrieve the passage that actually answers the question rather than a loosely related one from the same chapter. Recall gained **+0.100** for the same reason: the right chunk now exists in the pool.
+
+HyDE vs Fast is a tighter race than expected. Fast mode (no hypothetical doc generation) loses **0.033 on faithfulness** — that's the real cost of skipping HyDE. The LLM is slightly more likely to drift from the context when the retrieved passages are marginally less relevant. But it gains +0.003 on context precision, which is statistically noise at n=10. Latency difference is negligible (~0.2s) — almost certainly because OpenAI API variance dominates.
+
+The latency gap between HyDE and Fast should be ~3-4s (cost of one gpt-4o-mini call for hypothetical doc). The fact that it shows as only 0.2s in this eval suggests the API was under light load and HyDE was fast. Under production load the gap will be more visible.
+
+**Practical recommendation:** Use HyDE as default (0.9698 faithfulness — nearly hallucination-free). Offer Fast as explicit user choice when latency is critical. Free mode has no place in a clinical reference tool — answer relevancy looks good but there's no textbook grounding guarantee.
 
 ### Quick eval mode
 

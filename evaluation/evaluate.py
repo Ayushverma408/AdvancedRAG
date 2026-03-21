@@ -18,6 +18,7 @@ import time
 import argparse
 import warnings
 import numpy as np
+import httpx
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Seconds to sleep between questions — prevents TPM rate limit when running
@@ -28,6 +29,10 @@ INTER_QUESTION_SLEEP = 2
 QUICK_N_QUESTIONS  = 10
 QUICK_RAGAS_MODEL  = "gpt-4o-mini"   # ~10x cheaper, ~5x faster than gpt-4o
 FULL_RAGAS_MODEL   = "gpt-4o"
+
+# Multi-book pipeline modes — these call the running API instead of build_chain()
+MULTI_BOOK_MODES = {"multi-book-hyde", "multi-book-fast", "free"}
+API_URL = "http://localhost:8000"
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -97,6 +102,57 @@ def _invoke_with_retry(chain, retriever, question: str, max_retries: int = 5):
     return "", []
 
 
+def run_pipeline_api(testset: list[dict], pipeline_name: str) -> dict:
+    """Run each question through the live API — used for multi-book-hyde, multi-book-fast, free."""
+    free_mode = (pipeline_name == "free")
+    use_hyde  = (pipeline_name == "multi-book-hyde")
+
+    questions, answers, contexts, ground_truths = [], [], [], []
+    latencies, costs = [], []
+
+    for i, item in enumerate(testset):
+        q  = item["question"]
+        gt = item["ground_truth"]
+        print(f"  [{i+1}/{len(testset)}] {q[:75]}...")
+
+        t0 = time.perf_counter()
+        try:
+            resp = httpx.post(
+                f"{API_URL}/query",
+                json={"question": q, "free_mode": free_mode, "use_hyde": use_hyde},
+                timeout=120,
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            answer = data["answer"]
+            ctx    = [c["content"] for c in data.get("chunks", [])]
+        except Exception as e:
+            print(f"    API error: {e}")
+            answer, ctx = "", []
+        latency = time.perf_counter() - t0
+
+        if i < len(testset) - 1:
+            time.sleep(INTER_QUESTION_SLEEP)
+
+        cost_info = estimate_query_cost(q, ctx, answer)
+        latencies.append(round(latency, 3))
+        costs.append(cost_info["cost_usd"])
+
+        questions.append(q)
+        answers.append(answer)
+        contexts.append(ctx)
+        ground_truths.append(gt)
+
+    return {
+        "question": questions,
+        "answer": answers,
+        "contexts": contexts,
+        "ground_truth": ground_truths,
+        "latencies": latencies,
+        "costs": costs,
+    }
+
+
 def run_pipeline(testset: list[dict], chain, retriever) -> dict:
     """Run each question through the RAG pipeline, tracking latency and cost."""
     questions, answers, contexts, ground_truths = [], [], [], []
@@ -159,8 +215,12 @@ def run_evaluation(
     print(f"Loaded {len(testset)} test questions")
 
     print("\nRunning pipeline...")
-    chain, retriever = build_chain(mode=pipeline_name)
-    results = run_pipeline(testset, chain, retriever)
+    if pipeline_name in MULTI_BOOK_MODES:
+        print(f"  → Using live API at {API_URL}")
+        results = run_pipeline_api(testset, pipeline_name)
+    else:
+        chain, retriever = build_chain(mode=pipeline_name)
+        results = run_pipeline(testset, chain, retriever)
 
     # Choose RAGAS scoring model: explicit arg > quick default > full default
     _ragas_model = ragas_model or (QUICK_RAGAS_MODEL if quick else FULL_RAGAS_MODEL)

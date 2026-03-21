@@ -1,0 +1,95 @@
+{
+  "scores": {
+    "pipeline": "multi-book-fast",
+    "faithfulness": 0.9368,
+    "answer_relevancy": 0.8768,
+    "context_precision": 0.9233,
+    "context_recall": 0.9667,
+    "avg_latency_s": 7.362,
+    "p95_latency_s": 9.378,
+    "avg_cost_usd": 0.006376,
+    "cost_per_1k_queries_usd": 6.3757
+  },
+  "per_question": [
+    {
+      "question": "What are the common symptoms and clinical presentations of primary umbilical and epigastric hernias?",
+      "answer": "Primary umbilical and epigastric hernias have distinct clinical presentations:\n\n1. **Primary Umbilical Hernias**:\n   - Patients may not be aware of the hernia as it is often minimally symptomatic.\n   - These hernias are typically smaller and may contain herniated preperitoneal fat, omentum, and/or bowel as they enlarge.\n   - The most common complaint is the cosmetic appearance of a bulge.\n   - In smaller defects, preperitoneal fat may become incarcerated, leading to tenderness to touch or pain.\n   - Larger defects involving bowel may present with obstructive symptoms (Fischer's Mastery of Surgery, Page 3446).\n\n2. **Primary Epigastric Hernias**:\n   - These hernias are classified as defects located more than 3 cm below the xiphoid and more than 3 cm above the umbilicus.\n   - They can present as multiple hernias and may be located lateral to the midline.\n   - The pathophysiology is not as clear as umbilical hernias, but they may develop due to weakness in the aponeurotic linea alba or where vascular bundles penetrate the transversalis fascia (Fischer's Mastery of Surgery, Page 3444).\n\nIn summary, both types of hernias often present with a noticeable bulge, and symptoms can range from minimal to significant depending on the size and contents of the hernia.",
+      "ground_truth": "Patients with primary umbilical and epigastric hernias may not be aware of the hernia as it is often minimally symptomatic. These hernias are usually noticed due to their cosmetic appearance, with a common complaint being the appearance of a bulge. In smaller defects, the preperitoneal fat may become incarcerated, leading to tenderness to touch or pain. Larger defects involving bowel may present with obstructive symptoms.",
+      "latency_s": 9.227,
+      "cost_usd": 0.006397,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "When is preoperative cross-sectional imaging indicated for primary umbilical or epigastric hernias?",
+      "answer": "Preoperative cross-sectional imaging is indicated for primary umbilical or epigastric hernias in cases where there are larger defects or when patients present with symptoms that do not correlate with the clinical examination. In such situations, imaging can help determine other etiologies for the presenting symptoms and demonstrate important anatomic relationships that assist in operative planning (Fischer's Mastery of Surgery, Page 3446).",
+      "ground_truth": "Preoperative cross-sectional imaging is indicated for larger defects or when patients have symptoms that do not correlate with the clinical examination. It helps determine other etiologies for the presenting symptoms and demonstrates important anatomic relationships that guide operative planning.",
+      "latency_s": 6.592,
+      "cost_usd": 0.004504,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "What is the initial management approach for patients with Superior Mesenteric Artery Syndrome (SMAS) to alleviate obstructive symptoms and nutritional depletion?",
+      "answer": "The initial management approach for patients with Superior Mesenteric Artery Syndrome (SMAS) focuses on alleviating obstructive symptoms and addressing nutritional depletion. This involves managing electrolyte imbalances with intravenous fluid rehydration and achieving gastroduodenal decompression, typically through the passage of a nasogastric tube. Additionally, controlling gastric acid secretion is important, which can be accomplished using H2 receptor blockers or proton pump inhibitors. This approach is crucial due to the historic association of SMAS with concurrent peptic ulcer disease and the need to reduce secretions proximal to the obstruction (Fischer's Mastery of Surgery, Page 618).",
+      "ground_truth": "The initial management efforts in patients with SMAS should focus on alleviating obstructive symptoms and treating volume and nutritional depletion. This includes managing electrolyte imbalances with intravenous fluid rehydration and achieving gastroduodenal decompression through the passage of a nasogastric tube.",
+      "latency_s": 6.173,
+      "cost_usd": 0.00492,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "What dietary and positional modifications are recommended for patients with SMAS who are tolerant of oral intake?",
+      "answer": "For patients with Superior Mesenteric Artery Syndrome (SMAS) who are tolerant of oral intake, the following dietary and positional modifications are recommended:\n\n1. **Dietary Modifications**: Patients should have a modified diet consisting of small meals administered more frequently. This approach helps in managing weight loss and malnutrition, which are prevalent in these patients (Fischer's Mastery of Surgery, Page 618).\n\n2. **Positional Modifications**: Accompanying postprandial postural changes can help reduce the pain associated with ingestion and facilitate the passage of food beyond the point of obstruction. The recommended positions include the left lateral decubitus, prone, and knee\u2013chest positions, which have been successfully utilized for this purpose (Fischer's Mastery of Surgery, Page 618).\n\nThese modifications aim to alleviate symptoms and improve nutritional intake in patients with SMAS.",
+      "ground_truth": "Patients tolerant of oral intake should have a modified diet of small meals administered more frequently. Accompanying postprandial postural changes, such as the left lateral decubitus, prone, and knee\u2013chest positions, may reduce pain associated with ingestion and facilitate the passage of food beyond the point of obstruction.",
+      "latency_s": 7.123,
+      "cost_usd": 0.0057,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "What is the significance of performing a fundoplication following PEH reduction and repair, according to the passage?",
+      "answer": "Performing a fundoplication following paraesophageal hernia (PEH) reduction and repair is significant for several reasons:\n\n1. **Prevention of Reflux**: A fundoplication is commonly performed after PEH repair to prevent gastroesophageal reflux disease (GERD). Studies have shown that the incidence of reflux is significantly higher in patients who undergo PEH repair without fundoplication. For instance, a randomized controlled trial found that the 1-year postoperative incidence of reflux with a positive DeMeester score or esophagitis was 53% in the non-fundoplication group compared to 17% in the fundoplication group (Fischer's Mastery of Surgery, Page 148; Shackelford's Surgery of the Alimentary Tract, Page 263).\n\n2. **Reinforcement of Reflux Barrier**: Fundoplication serves as a reinforcement of the reflux barrier, which is crucial because the extensive hiatal dissection required during PEH repair can disrupt the phrenoesophageal ligament (PEL) and contribute to reflux (Fischer's Mastery of Surgery, Page 148).\n\n3. **Prevention of Recurrence**: There is a suggestion that fundoplication may help prevent recurrent herniation by acting as a bolster or by being fixed to the diaphragm, although objective support for this theory is limited (Fischer's Mastery of Surgery, Page 148).\n\n4. **Routine Consideration**: Fundoplication is generally considered a routine part of PEH repair to prevent GERD symptoms, which can result from the extensive dissection required during the procedure. It is recommended unless specific circumstances, such as high surgical risk, make it inadvisable (Shackelford's Surgery of the Alimentary Tract, Page 257).\n\nOverall, while the concept of selective fundoplication is intriguing, it remains a standard part of routine PEH repair due to its benefits in preventing reflux and potentially reducing recurrence (Shackelford's Surgery of the Alimentary Tract, Page 263).",
+      "ground_truth": "Performing a fundoplication following PEH reduction and repair is significant because it may reduce the incidence of postoperative reflux. A limited RCT showed that the 1-year postoperative incidence of reflux with a positive DeMeester score or esophagitis was significantly higher in the nonfundoplication group (53% vs. 17%, P = .026). Additionally, fundoplication may serve as a bolster to prevent recurrent herniation or can be fixed to the diaphragm to prevent recurrence, although there is limited objective support for this theory.",
+      "latency_s": 9.502,
+      "cost_usd": 0.008231,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "How does preoperative manometry influence the decision-making process for the type of fundoplication in patients with PEH?",
+      "answer": "Preoperative manometry plays a significant role in the decision-making process for the type of fundoplication in patients with paraesophageal hernia (PEH). According to the context provided:\n\n1. **Identification of Esophageal Dysmotility**: Preoperative manometry can identify patients with severe esophageal dysmotility, which is crucial because these patients may be at higher risk of developing dysphagia following a 360-degree Nissen fundoplication (Fischer's Mastery of Surgery, Page 148).\n\n2. **Guiding Tailored Approach**: High-resolution manometry (HRM) is considered the gold standard for assessing esophageal motility. It helps in ruling out aperistalsis and identifying patients who may benefit from a tailored approach to minimize the risk of dysphagia post-fundoplication. This tailored approach balances the patient's symptoms, the severity of gastroesophageal reflux disease (GERD), and esophageal motility to decide on the type of fundoplication (Shackelford's Surgery of the Alimentary Tract, Page 139).\n\n3. **Partial vs. Complete Fundoplication**: The decision to perform either a complete or partial fundoplication is often based on clinical symptoms of concurrent reflux or dysphagia. However, preoperative objective testing, such as manometry, can better guide this decision-making process (Fischer's Mastery of Surgery, Page 148).\n\n4. **Limitations and Alternatives**: In cases where manometry cannot be performed, a partial fundoplication is recommended to minimize the risk of postoperative dysphagia. A well-performed barium study may provide some insight into peristaltic function in such situations (Shackelford's Surgery of the Alimentary Tract, Page 110).\n\nOverall, preoperative manometry is a critical tool in assessing esophageal motility and guiding the choice between partial and complete fundoplication to optimize patient outcomes and minimize complications such as dysphagia.",
+      "ground_truth": "Preoperative manometry, when able to be performed, can identify patients with severe esophageal dysmotility who may be at higher risk of dysphagia with a 360-degree Nissen fundoplication. This information can guide the decision to perform either a complete or partial fundoplication based on the risk of postoperative dysphagia.",
+      "latency_s": 7.382,
+      "cost_usd": 0.008216,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "What are the key management strategies for gastrointestinal leaks as mentioned in Fischer's Mastery of Surgery?",
+      "answer": "The key management strategies for gastrointestinal (GI) leaks as mentioned in Fischer's Mastery of Surgery include:\n\n1. **Initial Management**: This involves keeping the patient nil per os (NPO), administering early empiric broad-spectrum antibiotics, and providing fluid resuscitation. This approach is applicable to both sleeve gastrectomy (SG) and Roux-en-Y gastric bypass (RYGB) procedures (Fischer's Mastery of Surgery, Pages 806, 811).\n\n2. **Nonoperative Management**: This is reserved for patients with small, contained leaks who remain clinically stable. It involves conservative measures without immediate surgical intervention (Fischer's Mastery of Surgery, Page 811).\n\n3. **Operative Management**: Surgery is indicated for patients who exhibit signs of peritonitis, have large or uncontained fluid collections, are hemodynamically unstable, or do not respond to nonoperative management. The surgical approach includes three components: washout of contamination, control of the leak, and establishment of an enteral feeding route (Fischer's Mastery of Surgery, Page 811).\n\nThese strategies are tailored based on the timing (early leak vs. chronic fistula), physiologic severity, location, extent of the leak, and associated contamination (Fischer's Mastery of Surgery, Pages 806, 811).",
+      "ground_truth": "The management of gastrointestinal leaks involves early diagnosis and appropriate intervention, which may include surgical repair or drainage, nutritional support, and antibiotics. The specific approach depends on the location and severity of the leak.",
+      "latency_s": 7.107,
+      "cost_usd": 0.006692,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "What are the main interventions for gastrointestinal bleeding according to Fischer's Mastery of Surgery?",
+      "answer": "The specific interventions for gastrointestinal bleeding according to \"Fischer's Mastery of Surgery\" include aggressive resuscitation and initial stabilization attempts via endoscopy or interventional radiology if necessary. For bleeding gastric ulcers, a biopsy or excision is recommended to rule out malignancy, although vagotomy is seldom warranted due to the infrequent association with hyperacidity (Fischer's Mastery of Surgery, Page 438).",
+      "ground_truth": "Interventions for gastrointestinal bleeding include endoscopic therapy, pharmacologic treatment, and in some cases, surgical intervention. The choice of intervention depends on the source and severity of the bleeding.",
+      "latency_s": 5.685,
+      "cost_usd": 0.004332,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "What is the clinical significance of the so-called lateral ligaments in pelvic surgery, according to the passage?",
+      "answer": "The clinical significance of the so-called lateral ligaments in pelvic surgery is multifaceted:\n\n1. **Misconception of Existence**: There is a debate about the existence of lateral ligaments. An international consensus conference in Tokyo highlighted that these ligaments do not actually exist as distinct structures. Instead, what was thought to be ligaments are areas of adherence between the mesorectum medially and the autonomic nerve plexus laterally (Fischer's Mastery of Surgery, Page 1468).\n\n2. **Anatomical Considerations**: The lateral ligaments, also referred to as \"lateral stalks,\" are fibrous condensations of the pelvic fascia that connect the pelvic sidewall to the mesorectum. They are shaped like a triangle and are located low in the pelvis at the level of the prostate or mid-vagina. These structures are only appreciated after posterior and anterior mobilization of the rectum (Fischer's Mastery of Surgery, Page 909).\n\n3. **Vascular and Nerve Considerations**: In some individuals, the lateral ligaments contain accessory middle rectal vessels, which can be a source of bleeding during surgery if not carefully managed (Fischer's Mastery of Surgery, Page 1598). However, extensive literature and cadaveric studies suggest that the lateral ligaments do not contain significant nerve fibers from the hypogastric plexus or the middle rectal arteries, although these structures run closely underneath the ligaments (Shackelford's Surgery of the Alimentary Tract, Page 1765).\n\n4. **Surgical Technique**: During pelvic surgery, particularly rectal mobilization, the lateral ligaments are not divided and can be used to perform a sutured rectopexy at the end of the procedure (Fischer's Mastery of Surgery, 8th Ed, Page 1769).\n\nOverall, the lateral ligaments play a role in anchoring the rectum and are important considerations during pelvic surgery due to their anatomical relationships with blood vessels and nerves.",
+      "ground_truth": "The so-called lateral ligaments do not actually exist; instead, they are areas of adherence between the mesorectum medially and the autonomic nerve plexus laterally. This adherence tethers the rectum in the pelvis and prevents the surgeon from lifting it upwards. It is crucial to recognize this to avoid cutting nerves while mistaking them for ligaments.",
+      "latency_s": 7.595,
+      "cost_usd": 0.007792,
+      "contexts_retrieved": 6
+    },
+    {
+      "question": "During pelvic surgery, what is the recommended approach to handling the nerves and vessels in the area of adherence between the mesorectum and the plexus?",
+      "answer": "During pelvic surgery, particularly when dealing with the area of adherence between the mesorectum and the plexus, it is important to handle the nerves and vessels with care to avoid complications. According to the context provided:\n\n1. **Nerve Management**: The nerves passing into the mesorectum must be divided. It is crucial to preserve the inferior hypogastric nerve plexuses to improve oncologic outcomes and reduce complications (Fischer's Mastery of Surgery, Page 1468; Shackelford's Surgery of the Alimentary Tract, Page 2040).\n\n2. **Vessel Management**: The vessels accompanying the nerves are small, typically not exceeding 1 to 2 mm in diameter, and can be managed with a touch of diathermy. There are usually no substantial middle rectal vessels arising directly from the internal iliacs, as a true middle rectal artery exists in less than 20% of patients (Fischer's Mastery of Surgery, Page 1468).\n\n3. **Surgical Technique**: The use of electrocautery with appropriate tension on the rectum allows for the division of attachments to the mesorectum. Care should be taken to avoid injuring the presacral venous plexus (Shackelford's Surgery of the Alimentary Tract, Page 2058).\n\nOverall, the approach involves careful dissection to preserve nerve structures while managing small vessels with diathermy, ensuring that the surgical planes are followed correctly to avoid unnecessary complications.",
+      "ground_truth": "The nerves passing into the mesorectum must be divided, but the accompanying vessels are small and typically require only a touch with the diathermy. If the correct plane is followed, there are usually no substantial middle rectal vessels arising directly from the internal iliacs.",
+      "latency_s": 7.23,
+      "cost_usd": 0.006973,
+      "contexts_retrieved": 6
+    }
+  ]
+}
