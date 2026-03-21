@@ -130,17 +130,18 @@ fi
 # ── Open browser ──────────────────────────────────────────────
 echo ""
 info "Opening browser…"
-open "http://localhost:${UI_PORT}"
+sleep 3
+open "https://scrubref.shuf.site"
 
 # ── Start Cloudflare tunnel ───────────────────────────────────
 echo ""
 if command -v cloudflared >/dev/null 2>&1; then
-    info "Starting Cloudflare tunnel  (medrag.shuf.site)…"
+    info "Starting Cloudflare tunnel  (scrubref.shuf.site)…"
     nohup cloudflared tunnel run medrag > "$CF_LOG" 2>&1 &
     CF_PID=$!
     sleep 3
     if pgrep -f "cloudflared tunnel run medrag" >/dev/null 2>&1; then
-        success "Tunnel live  ✓  (PID $CF_PID)  →  https://medrag.shuf.site"
+        success "Tunnel live  ✓  (PID $CF_PID)  →  https://scrubref.shuf.site"
     else
         warn "Tunnel did not start. Check logs: $CF_LOG"
     fi
@@ -151,7 +152,7 @@ fi
 echo ""
 echo -e "${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}"
 success "Stack is live at ${BOLD}http://localhost:${UI_PORT}${RESET}"
-echo -e "  Public URL : ${BOLD}https://medrag.shuf.site${RESET}"
+echo -e "  Public URL : ${BOLD}https://scrubref.shuf.site${RESET}"
 echo -e "  API logs   : ${API_LOG}"
 echo -e "  UI logs    : ${UI_LOG}"
 echo -e "  CF logs    : ${CF_LOG}"
