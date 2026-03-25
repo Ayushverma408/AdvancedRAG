@@ -22,7 +22,7 @@ HyDE -> Dense + Sparse (BM25) -> RRF -> Cross-Encoder Rerank -> GPT-4o
 
 **RRF** - Reciprocal Rank Fusion merges three result lists (HyDE dense, original dense, BM25). Anything ranking highly across multiple lists floats up.
 
-**Cross-Encoder Rerank** - ms-marco-MiniLM-L-6-v2 reads each (question, passage) pair jointly and rescores. Much more accurate than embedding similarity alone. Cuts to top 6 passages.
+**Cross-Encoder Rerank** - ms-marco-MiniLM-L-6-v2 reads each (question, passage) pair jointly and rescores. Much more accurate than embedding similarity alone. Cuts to top 4 passages. Chunks below a score threshold (`-1.0` logit floor) are filtered as noise; at least 2 chunks are always returned.
 
 ---
 
@@ -84,7 +84,7 @@ Query
   │
   ├─ Global RRF across all 4 books
   │
-  └─ Cross-encoder rerank (ms-marco-MiniLM-L-6-v2) → top 6 chunks → GPT-4o
+  └─ Cross-encoder rerank (ms-marco-MiniLM-L-6-v2) → top 4 chunks → GPT-4o
 ```
 
 Key design decision: embeddings are pre-computed **before** threads start. Each thread does only local work (ChromaDB HNSW disk search + BM25 CPU) — zero OpenAI API calls inside threads. Retrieval time is `max(4 books)` not `sum(8 API calls)`. This dropped retrieval from ~90s to <1s for the search phase itself.
@@ -110,6 +110,18 @@ Every answer now shows a per-phase latency footer in the UI:
 ### Cross-encoder warmup
 
 Cross-encoder model (ms-marco-MiniLM-L-6-v2) is loaded at API startup via `lifespan()` so the first user query pays zero cold-start cost (~4s saved on first hit).
+
+### Dynamic answer structure
+
+`MULTI_BOOK_SYSTEM_PROMPT` instructs GPT-4o to pick section headers based on question type rather than always using a fixed template:
+
+- Operative/procedural questions: **Indication · Key Steps · Technical Considerations · Complications**
+- Pathophysiology/mechanism questions: **Definition · Mechanism · Clinical Features · Management**
+- Complication questions: **Causes · Recognition · Management · Prevention**
+- Diagnostic/workup questions: **Presentation · Investigations · Interpretation**
+- Simple factual lookups: single concise paragraph — no headers
+
+Only sections that apply are emitted. GPT-4o never outputs a section heading with nothing under it.
 
 ### Multi-book RAGAS Evaluation (March 2026, quick mode — n=10, gpt-4o-mini scorer)
 
@@ -151,7 +163,7 @@ python evaluation/evaluate.py --pipeline hyde --quick
 
 - Each answer surfaces **📄 page preview buttons**, one per unique retrieved page
 - Clicking any button opens a **gallery of all retrieved pages concurrently** (±1 pages for selected chunk, single page for the rest)
-- Selected chunk text is **highlighted in yellow** directly on the PDF page (PyMuPDF `search_for` + `add_highlight_annot`; whitespace-normalised before matching)
+- Selected chunk text is **highlighted in yellow** directly on the PDF page. The `/page` endpoint locates the chunk's start position on the page, then its end position, and highlights every text line between them — the full chunk span, not just the first line. (PyMuPDF `search_for` + `add_highlight_annot`; whitespace-normalised before matching)
 
 ### Extracted figure images
 
@@ -164,4 +176,18 @@ Figures extracted from PDFs at ingest time are **not shown by default**. A **�
 ./medrag.sh stop   # stop everything including tunnel
 ```
 
-Cloudflare tunnel: `https://medrag.shuf.site` → `localhost:7860`
+Cloudflare tunnel: `https://scrubref.shuf.site` → `localhost:7860`
+
+### Observability
+
+Structured JSON logs (via `src/logger.py`) cover the full request path. Notable log events:
+
+| Event | Where | What it captures |
+|---|---|---|
+| `rerank_complete` | retriever_multi | `candidates_in`, `candidates_out`, `filtered_by_threshold`, `top_score`, rerank latency |
+| `hyde_slow` | retriever_multi | Warning when HyDE generation exceeds 5s; includes query text |
+| `book_retrieval_error` | retriever_multi | Per-book thread failure with full stack trace |
+| `book_retrieval_done` | retriever_multi | Per-book hit counts (hyp, orig, BM25) and latency |
+| `retrieval_pipeline_complete` | retriever_multi | Full per-phase timing breakdown |
+| free mode exception | api | Logged with `exc_info` so stack traces appear in logs |
+| `image_index` non-integer page | image_index | Warning when page metadata is not an integer |
