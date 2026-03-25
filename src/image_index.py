@@ -15,7 +15,10 @@ Only PDFs are supported (fitz/pymupdf).
 import os
 import sys
 import json
+import logging
 import argparse
+
+log = logging.getLogger(__name__)
 
 import fitz  # pymupdf
 
@@ -196,6 +199,10 @@ def lookup_images(pages: list, collection: str, window: int = 1) -> list[dict]:
     images: list[dict] = []
 
     for page in pages:
+        if not isinstance(page, int):
+            log.warning("lookup_images: skipping non-integer page metadata",
+                        extra={"event": "image_lookup_bad_page", "page": page, "collection": collection})
+            continue
         for p in range(page - window, page + window + 1):
             for entry in index.get(str(p), []):
                 # Handle both old-format (str) and new-format (dict)

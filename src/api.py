@@ -209,6 +209,9 @@ async def query_stream(req: QueryRequest, request: Request):
                     None, lambda: llm.invoke(FREE_PROMPT).content
                 )
             except Exception:
+                log.error("Free mode generation failed",
+                          extra={"event": "free_mode_error", "question": question,
+                                 "request_id": request_id}, exc_info=True)
                 yield _sse({"phase": "error", "msg": "Generation failed"})
                 return
             t_total = round(time.perf_counter() - t0, 3)
@@ -333,6 +336,8 @@ def query(req: QueryRequest):
     try:
         docs = retriever.invoke(question)
     except Exception:
+        log.error("Retrieval failed", extra={"event": "retrieval_error",
+                  "request_id": request_id, "question": question}, exc_info=True)
         raise HTTPException(status_code=500, detail="Retrieval failed")
     t_retrieval = round(time.perf_counter() - t0, 3)
 
@@ -341,6 +346,8 @@ def query(req: QueryRequest):
     try:
         answer = generator.invoke({"context": format_docs(docs), "question": question})
     except Exception:
+        log.error("Generation failed", extra={"event": "llm_error",
+                  "request_id": request_id, "question": question}, exc_info=True)
         raise HTTPException(status_code=500, detail="Generation failed")
     t_llm   = round(time.perf_counter() - t1, 3)
     t_total = round(t_retrieval + t_llm, 3)
@@ -393,23 +400,42 @@ def get_page_image(collection: str, page_num: int, dpi: int = 150, highlight: st
     idx = max(0, min(page_num - 1, total - 1))
     page = doc[idx]
 
-    # Yellow highlight — normalize whitespace then try progressively shorter substrings
+    # Yellow highlight — find start + end of chunk on the page, highlight all lines between
     if highlight:
         import re
-        # Collapse newlines/tabs/multiple spaces into single space; strip leading/trailing
         normalized = re.sub(r"\s+", " ", highlight).strip()
-        # Try substrings of decreasing length until something matches in the PDF
-        for start, length in [(0, 120), (0, 80), (20, 80), (0, 50), (0, 35)]:
-            snippet = normalized[start : start + length].strip()
-            if len(snippet) < 20:
-                break
-            rects = page.search_for(snippet)
+
+        # Locate where the chunk starts on the page
+        start_rects = None
+        for length in [60, 45, 35, 25]:
+            rects = page.search_for(normalized[:length].strip())
             if rects:
-                for rect in rects:
-                    annot = page.add_highlight_annot(rect)
-                    annot.set_colors(stroke=[1, 1, 0])  # yellow
-                    annot.update()
-                break  # stop after first successful match
+                start_rects = rects
+                break
+
+        # Locate where the chunk ends (only worth searching if chunk is long)
+        end_rects = None
+        if start_rects and len(normalized) > 80:
+            for length in [60, 45, 35, 25]:
+                rects = page.search_for(normalized[-length:].strip())
+                if rects:
+                    end_rects = rects
+                    break
+
+        if start_rects:
+            y_top = start_rects[0].y0
+            y_bot = end_rects[-1].y1 if end_rects else start_rects[-1].y1
+
+            # Highlight every text line whose bbox falls within [y_top, y_bot]
+            for block in page.get_text("dict", flags=0).get("blocks", []):
+                if block.get("type") != 0:
+                    continue
+                for line in block.get("lines", []):
+                    lr = fitz.Rect(line["bbox"])
+                    if lr.y1 >= y_top - 2 and lr.y0 <= y_bot + 2:
+                        annot = page.add_highlight_annot(lr)
+                        annot.set_colors(stroke=[1, 1, 0])
+                        annot.update()
 
     mat = fitz.Matrix(dpi / 72, dpi / 72)
     pix = page.get_pixmap(matrix=mat)

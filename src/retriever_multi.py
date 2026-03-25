@@ -34,9 +34,11 @@ from retriever_rerank import get_cross_encoder
 
 log = logging.getLogger("book_rag")
 
-FETCH_K_PER_BOOK = 10  # candidates fetched per source (dense-hyp / dense-orig / bm25) per book
-FINAL_K = 6            # final docs returned after global rerank
-MAX_RERANK = 30        # cap global RRF pool before cross-encoder (keeps rerank fast)
+FETCH_K_PER_BOOK = 10      # candidates fetched per source (dense-hyp / dense-orig / bm25) per book
+FINAL_K = 4                # final docs returned after global rerank
+MAX_RERANK = 30            # cap global RRF pool before cross-encoder (keeps rerank fast)
+RERANK_SCORE_THRESHOLD = -1.0  # cross-encoder logit floor — chunks below this are filtered as noise
+MIN_FINAL_K = 2            # minimum chunks always returned even if all fall below threshold
 
 HYDE_PROMPT = """\
 You are an expert medical author. Given the question below, write a short \
@@ -115,6 +117,8 @@ class MultiBookHyDERetriever(BaseRetriever):
     fetch_k: int = FETCH_K_PER_BOOK
     final_k: int = FINAL_K
     max_rerank: int = MAX_RERANK
+    score_threshold: float = RERANK_SCORE_THRESHOLD
+    min_final_k: int = MIN_FINAL_K
 
     class Config:
         arbitrary_types_allowed = True
@@ -138,6 +142,10 @@ class MultiBookHyDERetriever(BaseRetriever):
             t_hyde_0 = time.perf_counter()
             hyp_doc = self._generate_hypothetical_doc(query)
             t_hyde  = time.perf_counter() - t_hyde_0
+            if t_hyde > 5.0:
+                log.warning("HyDE generation slow", extra={
+                    "event": "hyde_slow", "latency_hyde_s": round(t_hyde, 3), "query": query,
+                })
 
             # Embed query + hyp_doc concurrently — 2 API calls in parallel
             t_embed_0 = time.perf_counter()
@@ -185,7 +193,7 @@ class MultiBookHyDERetriever(BaseRetriever):
                 except Exception as exc:
                     log.warning(f"Book retrieval failed: {collection}", extra={
                         "event": "book_retrieval_error", "collection": collection, "error": str(exc),
-                    })
+                    }, exc_info=exc)
 
         t_retrieval = time.perf_counter() - t_retrieval_0
         log.debug("Parallel book retrieval done", extra={
@@ -196,6 +204,8 @@ class MultiBookHyDERetriever(BaseRetriever):
         })
 
         if not all_per_book_results:
+            log.error("All book retrievals failed or returned empty",
+                      extra={"event": "all_books_empty", "query": query})
             return []
 
         # ── Step 3: Global RRF ─────────────────────────────────────────────────
@@ -210,8 +220,21 @@ class MultiBookHyDERetriever(BaseRetriever):
         pairs       = [(query, doc.page_content) for doc in rerank_pool]
         scores      = model.predict(pairs)
         scored      = sorted(zip(scores, rerank_pool), key=lambda x: x[0], reverse=True)
-        top_docs    = [doc for _, doc in scored[: self.final_k]]
+        # Filter by score threshold — drop noise; guarantee at least min_final_k chunks
+        qualifying = [(s, doc) for s, doc in scored if float(s) >= self.score_threshold]
+        if len(qualifying) < self.min_final_k:
+            qualifying = list(scored[: self.min_final_k])
+        top_docs    = [doc for _, doc in qualifying[: self.final_k]]
         t_rerank    = time.perf_counter() - t_rerank_0
+        top_score   = round(float(scored[0][0]), 4) if scored else None
+        log.info("Cross-encoder rerank complete", extra={
+            "event": "rerank_complete",
+            "candidates_in": len(rerank_pool),
+            "candidates_out": len(top_docs),
+            "filtered_by_threshold": len(scored) - len(qualifying),
+            "top_score": top_score,
+            "latency_rerank_s": round(t_rerank, 3),
+        })
 
         t_total = time.perf_counter() - t_start
         timings = {
