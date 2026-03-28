@@ -107,6 +107,10 @@ class QueryRequest(BaseModel):
     pipeline: Optional[str] = None   # ignored — pipeline is fixed to multi-book-hyde
     free_mode: bool = False           # skip RAG; answer directly from GPT-4o knowledge
     use_hyde: bool = True             # False = fast mode: skip HyDE, embed query only (~4s faster)
+    profile_prompt: str = ""          # optional user profile context injected into the system prompt
+    answer_depth: str = "balanced"           # "concise" | "balanced" | "comprehensive"
+    answer_tone: str = "teaching"            # "textbook" | "teaching"
+    answer_restrictiveness: str = "guided"   # "strict" | "guided" | "open"
 
 
 class ChunkResponse(BaseModel):
@@ -199,10 +203,11 @@ async def query_stream(req: QueryRequest, request: Request):
             try:
                 from langchain_openai import ChatOpenAI
                 llm = ChatOpenAI(model="gpt-4o", temperature=0)
+                profile_section = f"\nUser profile:\n{req.profile_prompt.strip()}\n" if req.profile_prompt.strip() else ""
                 FREE_PROMPT = (
-                    "You are an expert medical assistant with broad clinical knowledge. "
-                    "Answer the following question clearly and accurately. "
-                    "If relevant, mention uncertainty or recommend consulting primary sources.\n\n"
+                    "You are ScrubRef, a surgical reference assistant with broad surgical and medical knowledge. "
+                    "Answer the following question drawing freely on your full knowledge."
+                    f"{profile_section}\n\n"
                     f"Question: {question}"
                 )
                 answer = await loop.run_in_executor(
@@ -263,15 +268,25 @@ async def query_stream(req: QueryRequest, request: Request):
         # ── Phase 2: Generation ───────────────────────────────────────────
         yield _sse({"phase": "generating"})
 
-        from chain import format_docs
+        from chain import format_docs, build_answer_system_prompt
         context   = format_docs(docs)
         _, generator = get_or_build_multi_pipeline()
 
+        system_prompt = build_answer_system_prompt(
+            depth=req.answer_depth,
+            tone=req.answer_tone,
+            restrictiveness=req.answer_restrictiveness,
+            profile_prompt=req.profile_prompt,
+            context=context,
+        )
+
         t1 = time.perf_counter()
+        answer_tokens = []
         try:
-            answer = await loop.run_in_executor(
-                None, generator.invoke, {"context": context, "question": question}
-            )
+            async for token in generator.astream({"system_prompt": system_prompt, "question": question}):
+                answer_tokens.append(token)
+                yield _sse({"phase": "token", "delta": token})
+            answer = "".join(answer_tokens)
         except Exception:
             log.error("Generation failed",
                       extra={"event": "llm_error", "request_id": request_id,
