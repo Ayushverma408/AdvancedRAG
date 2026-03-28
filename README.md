@@ -1,3 +1,97 @@
+# advanced-rag-poc (ScrubRef RAG backend)
+
+FastAPI backend powering ScrubRef. Searches 4 surgical textbooks simultaneously and generates cited answers using a multi-book HyDE retrieval pipeline.
+
+Live API: http://localhost:8000 (local) — fronted by scrubref-api in production
+
+## Stack
+
+- FastAPI + LangChain + ChromaDB
+- GPT-4o for HyDE generation and answer synthesis
+- BM25 + dense (text-embedding-3-small) + cross-encoder reranking (ms-marco-MiniLM-L-6-v2)
+
+## Running
+
+```bash
+# Full stack: API on :8000 + Chainlit UI on :7860 (recommended for local dev)
+./medrag.sh
+./medrag.sh stop
+
+# API only
+source venv/bin/activate
+uvicorn src.api:app --port 8000
+```
+
+First startup takes ~20s while BM25 indexes for ~115k chunks load into memory. Subsequent requests are fast.
+
+## Environment variables
+
+Create `.env` in the repo root:
+
+```
+OPENAI_API_KEY=
+DATABASE_URL=postgresql://...
+JWT_SECRET=
+```
+
+## API endpoints
+
+| Method | Path | Description |
+|---|---|---|
+| GET | `/health` | Status + rate limit counters |
+| GET | `/books` | List indexed books and collections |
+| POST | `/query/stream` | SSE: run RAG pipeline, stream answer token-by-token |
+| POST | `/query` | Blocking: run pipeline, return full response |
+| GET | `/page/{collection}/{page_num}` | Render PDF page as PNG (1-indexed); `?highlight=` highlights chunk text |
+| GET | `/rate-limit` | Current rate limit status |
+
+### SSE event sequence for `/query/stream`
+
+```
+retrieving   → pipeline started
+retrieved    → chunks ready: {chunks, latency_retrieval_s}
+generating   → LLM started
+token        → one LLM token: {delta: "..."}
+done         → complete: {answer, chunks, pages, images, latency_*}
+error        → {msg}
+```
+
+### `QueryRequest` fields
+
+| Field | Default | Description |
+|---|---|---|
+| `question` | required | The query |
+| `free_mode` | `false` | Skip RAG, answer from GPT-4o knowledge only |
+| `use_hyde` | `true` | `false` skips HyDE, embeds query directly (~4s faster) |
+| `answer_depth` | `"balanced"` | `"concise"` \| `"balanced"` \| `"comprehensive"` |
+| `answer_tone` | `"teaching"` | `"textbook"` \| `"teaching"` |
+| `answer_restrictiveness` | `"guided"` | `"strict"` \| `"guided"` \| `"open"` |
+| `profile_prompt` | `""` | Optional user context injected into the system prompt |
+
+## Adding a new book
+
+```bash
+# 1. Drop PDF into data/raw/medical/
+# 2. Add an entry to src/books.py
+source venv/bin/activate
+python src/ingest.py --book <key>
+./medrag.sh   # restart to load new collection
+```
+
+## Key source files
+
+```
+src/api.py                FastAPI app, all endpoints, pipeline warm-up at startup
+src/retriever_multi.py    Multi-book HyDE retriever
+src/chain.py              Answer generation chain, system prompt builder
+src/books.py              Book registry — medical_books()
+src/ingest.py             PDF → chunk → embed → ChromaDB + image extraction
+src/image_index.py        Image lookup by page number
+src/rate_limiter.py       Request rate limiter (daily + per-minute)
+```
+
+---
+
 # Advanced RAG - Medical Book Intelligence
 
 ## The Idea
