@@ -126,7 +126,8 @@ class MultiBookHyDERetriever(BaseRetriever):
     def _generate_hypothetical_doc(self, query: str) -> str:
         return self.llm.invoke(HYDE_PROMPT.format(question=query)).content.strip()
 
-    def retrieve(self, query: str, use_hyde: bool = True) -> List[Document]:
+    def retrieve(self, query: str, use_hyde: bool = True,
+                 status_cb=None) -> List[Document]:
         """
         Main retrieval entry point. Call this directly from the API.
 
@@ -134,11 +135,15 @@ class MultiBookHyDERetriever(BaseRetriever):
                                    query + hyp_doc, uses both as dense signals. Best quality.
         use_hyde=False (fast)    — skips HyDE generation, embeds only the query.
                                    Saves ~4s per query, small quality drop.
+
+        status_cb: optional callable(label: str) — called at each sub-phase so the API
+                   can stream real-time progress events (hyde, embed, search, rerank).
         """
         t_start = time.perf_counter()
 
         # ── Step 1: HyDE (optional) + embed ───────────────────────────────────
         if use_hyde:
+            if status_cb: status_cb("hyde")
             t_hyde_0 = time.perf_counter()
             hyp_doc = self._generate_hypothetical_doc(query)
             t_hyde  = time.perf_counter() - t_hyde_0
@@ -148,6 +153,7 @@ class MultiBookHyDERetriever(BaseRetriever):
                 })
 
             # Embed query + hyp_doc concurrently — 2 API calls in parallel
+            if status_cb: status_cb("embed")
             t_embed_0 = time.perf_counter()
             with ThreadPoolExecutor(max_workers=2, thread_name_prefix="embed") as ep:
                 f_q = ep.submit(self.embeddings.embed_query, query)
@@ -161,6 +167,7 @@ class MultiBookHyDERetriever(BaseRetriever):
             })
         else:
             # Fast mode: embed query once, reuse for both dense signals
+            if status_cb: status_cb("embed")
             t_hyde  = 0.0
             t_embed_0 = time.perf_counter()
             query_emb = self.embeddings.embed_query(query)
@@ -171,6 +178,7 @@ class MultiBookHyDERetriever(BaseRetriever):
             })
 
         # ── Step 2: Retrieve from ALL books in parallel — pure local, no API ──
+        if status_cb: status_cb("search")
         t_retrieval_0 = time.perf_counter()
         all_per_book_results: List[List[Document]] = []
 
@@ -214,6 +222,7 @@ class MultiBookHyDERetriever(BaseRetriever):
         t_rrf   = time.perf_counter() - t_rrf_0
 
         # ── Step 4: Cross-encoder rerank — capped at MAX_RERANK ───────────────
+        if status_cb: status_cb("rerank")
         t_rerank_0  = time.perf_counter()
         model       = get_cross_encoder()
         rerank_pool = merged[: self.max_rerank]

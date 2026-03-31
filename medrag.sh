@@ -10,6 +10,7 @@ API_PORT=8000
 UI_PORT=7860
 API_DIR="$(cd "$(dirname "$0")" && pwd)"
 UI_DIR="$(cd "$(dirname "$0")/../surgery-rag-ui" && pwd)"
+WEB_API_DIR="$(cd "$(dirname "$0")/../scrubref-api" && pwd)"
 API_LOG="/tmp/rag_api.log"
 UI_LOG="/tmp/rag_ui.log"
 CF_LOG="/tmp/rag_cf.log"
@@ -24,7 +25,7 @@ warn()    { echo -e "${YELLOW}${BOLD}[medrag]${RESET} $*"; }
 error()   { echo -e "${RED}${BOLD}[medrag]${RESET} $*"; }
 
 # ── helpers ───────────────────────────────────────────────────
-port_pids() { lsof -ti:"$1" 2>/dev/null; }
+port_pids() { lsof -ti:"$1" -sTCP:LISTEN 2>/dev/null; }
 is_running() { [[ -n "$(port_pids "$1")" ]]; }
 
 stop_services() {
@@ -74,6 +75,41 @@ wait_for_ui() {
     return 1
 }
 
+check_db() {
+    if [[ ! -f "$WEB_API_DIR/.env" ]]; then
+        warn "scrubref-api .env not found — skipping DB check"
+        return 0
+    fi
+
+    info "Checking Supabase database connection…"
+
+    # Load DATABASE_URL from scrubref-api .env and test with Prisma
+    local result
+    result=$(cd "$WEB_API_DIR" && node -e "
+require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
+const p = new PrismaClient();
+p.\$connect()
+  .then(() => p.\$queryRaw\`SELECT 1\`)
+  .then(() => { p.\$disconnect(); console.log('ok'); process.exit(0); })
+  .catch(e => { console.error(e.message); process.exit(1); });
+" 2>&1)
+
+    if [[ "$result" == "ok" ]]; then
+        success "Supabase DB  ✓  connection healthy"
+        return 0
+    else
+        # Extract just the first line of the error (avoid Prisma noise)
+        local short_err
+        short_err=$(echo "$result" | grep -v "^$" | grep -v "^\s" | head -1)
+        error "Supabase DB  ✗  connection failed"
+        error "  Error : $short_err"
+        error "  Fix   : check DATABASE_URL in $WEB_API_DIR/.env"
+        error "          → app.supabase.com → Project Settings → Database → reset password if needed"
+        return 1
+    fi
+}
+
 # ── stop-only mode ────────────────────────────────────────────
 if [[ "$1" == "stop" ]]; then
     if is_running $API_PORT || is_running $UI_PORT || pgrep -f "cloudflared tunnel run medrag" >/dev/null 2>&1; then
@@ -95,20 +131,30 @@ echo ""
 # Kill any existing instances
 stop_services
 
+# ── Pre-flight: Supabase DB check ────────────────────────────
+echo ""
+if ! check_db; then
+    warn "Continuing despite DB error — RAG pipeline will still work, but scrubref-api queries will fail."
+fi
+
+echo ""
+
 # ── Start API ─────────────────────────────────────────────────
 info "Starting FastAPI backend  (port ${API_PORT})…"
+info "  Log : $API_LOG"
 cd "$API_DIR" || { error "Cannot find $API_DIR"; exit 1; }
 nohup venv/bin/uvicorn src.api:app --port "$API_PORT" > "$API_LOG" 2>&1 &
 API_PID=$!
+info "  PID : $API_PID  (warming up — loading 4 books + cross-encoder…)"
 
 # ── Wait for API ──────────────────────────────────────────────
 if wait_for_api; then
-    # Parse how many books loaded from the log
     books=$(grep "pipeline_ready" "$API_LOG" | grep -o '"books":\[[^]]*\]' | head -1)
-    success "API ready  ✓  (PID $API_PID)"
+    success "FastAPI backend  ✓  ready on :${API_PORT}  (PID $API_PID)"
     [[ -n "$books" ]] && info "  Books loaded: $(echo "$books" | tr -d '"books:[]' | tr ',' ' | ')"
 else
-    error "API did not start in time. Check logs: $API_LOG"
+    error "FastAPI backend did not start in time."
+    error "  Check logs: $API_LOG"
     exit 1
 fi
 
@@ -116,14 +162,17 @@ echo ""
 
 # ── Start Chainlit UI ─────────────────────────────────────────
 info "Starting Chainlit UI  (port ${UI_PORT})…"
+info "  Log : $UI_LOG"
 cd "$UI_DIR" || { error "Cannot find $UI_DIR"; exit 1; }
 nohup venv/bin/chainlit run app.py --port "$UI_PORT" > "$UI_LOG" 2>&1 &
 UI_PID=$!
+info "  PID : $UI_PID"
 
 if wait_for_ui; then
-    success "UI ready  ✓  (PID $UI_PID)"
+    success "Chainlit UI  ✓  ready on :${UI_PORT}  (PID $UI_PID)"
 else
-    error "UI did not start in time. Check logs: $UI_LOG"
+    error "Chainlit UI did not start in time."
+    error "  Check logs: $UI_LOG"
     exit 1
 fi
 
@@ -136,17 +185,19 @@ open "https://scrubref.shuf.site"
 # ── Start Cloudflare tunnel ───────────────────────────────────
 echo ""
 if command -v cloudflared >/dev/null 2>&1; then
-    info "Starting Cloudflare tunnel  (scrubref.shuf.site)…"
+    info "Starting Cloudflare tunnel…"
+    info "  Log : $CF_LOG"
     nohup cloudflared tunnel run medrag > "$CF_LOG" 2>&1 &
     CF_PID=$!
     sleep 3
     if pgrep -f "cloudflared tunnel run medrag" >/dev/null 2>&1; then
-        success "Tunnel live  ✓  (PID $CF_PID)  →  https://scrubref.shuf.site"
+        success "Cloudflare tunnel  ✓  live  (PID $CF_PID)  →  https://scrubref.shuf.site"
     else
-        warn "Tunnel did not start. Check logs: $CF_LOG"
+        warn "Cloudflare tunnel did not start."
+        warn "  Check logs: $CF_LOG"
     fi
 else
-    warn "cloudflared not found — skipping tunnel (install: brew install cloudflared)"
+    warn "cloudflared not found — skipping tunnel  (brew install cloudflared)"
 fi
 
 echo ""

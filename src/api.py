@@ -235,9 +235,34 @@ async def query_stream(req: QueryRequest, request: Request):
         t0 = time.perf_counter()
         try:
             retriever, _ = get_or_build_multi_pipeline()
-            docs, ret_timings = await loop.run_in_executor(
-                None, retriever.retrieve, question, use_hyde
+
+            # Thread-safe queue: retriever calls status_cb from a worker thread,
+            # we drain it here in the async generator to yield real-time sub-phase events.
+            status_q: asyncio.Queue = asyncio.Queue()
+
+            def _status_cb(label: str) -> None:
+                loop.call_soon_threadsafe(status_q.put_nowait, label)
+
+            retrieve_future = loop.run_in_executor(
+                None,
+                lambda: retriever.retrieve(question, use_hyde=use_hyde, status_cb=_status_cb),
             )
+
+            # Poll for sub-phase events while the retriever runs in its thread.
+            # Avoid asyncio.wait_for(queue.get()) — on Python 3.13 the timeout/put
+            # race can silently drop items. Plain sleep + get_nowait is simpler.
+            while not retrieve_future.done():
+                await asyncio.sleep(0.05)
+                while not status_q.empty():
+                    yield _sse({"phase": "sub_phase", "label": status_q.get_nowait()})
+
+            # Let any in-flight call_soon_threadsafe callbacks land, then drain
+            await asyncio.sleep(0)
+            while not status_q.empty():
+                yield _sse({"phase": "sub_phase", "label": status_q.get_nowait()})
+
+            docs, ret_timings = await retrieve_future
+
         except Exception:
             log.error("Retrieval failed",
                       extra={"event": "retrieval_error", "request_id": request_id,
