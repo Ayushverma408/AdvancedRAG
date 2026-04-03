@@ -1,3 +1,0 @@
-# Extra Python deps needed for auth + session persistence
-asyncpg>=0.29.0
-
