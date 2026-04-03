@@ -3,17 +3,17 @@ uvicorn[standard]
 python-dotenv
 pydantic
 
-# LangChain
-langchain
+# LangChain — specific packages only, no base langchain or community
+langchain-core
 langchain-openai
 langchain-chroma
-langchain-core
 langchain-text-splitters
 
 # Vector store
 chromadb
 
-# Reranking
+# Reranking — install CPU torch first before this:
+# pip install torch --index-url https://download.pytorch.org/whl/cpu
 sentence-transformers
 
 # PDF processing
