@@ -1,0 +1,20 @@
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+
+# LangChain
+langchain
+langchain-openai
+langchain-chroma
+langchain-core
+langchain-text-splitters
+
+# Vector store
+chromadb
+
+# Reranking
+sentence-transformers
+
+# PDF processing
+pymupdf
