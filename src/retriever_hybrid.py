@@ -24,8 +24,21 @@ TOP_K = 6
 RRF_K = 60  # standard RRF constant
 
 
+def load_vectorstore(collection: str = DEFAULT_COLLECTION):
+    """Return a Chroma vectorstore for the given collection. Does NOT load all chunks into memory."""
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+    vs = Chroma(
+        collection_name=collection,
+        embedding_function=embeddings,
+        persist_directory=CHROMA_DIR,
+    )
+    count = vs._collection.count()
+    return count, vs
+
+
 def load_all_chunks(collection: str = DEFAULT_COLLECTION):
-    """Pull all stored chunks from Chroma in batches (avoids SQLite variable limit)."""
+    """Pull all stored chunks from Chroma in batches (avoids SQLite variable limit).
+    NOTE: only needed if building a BM25 index. For dense-only retrieval use load_vectorstore()."""
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
     vs = Chroma(
         collection_name=collection,
@@ -39,7 +52,7 @@ def load_all_chunks(collection: str = DEFAULT_COLLECTION):
         raw = vs.get(limit=batch_size, offset=offset, include=["documents", "metadatas"])
         for text, meta in zip(raw["documents"], raw["metadatas"]):
             docs.append(Document(page_content=text, metadata=meta))
-    print(f"Loaded {len(docs)} chunks for BM25 index")
+    print(f"Loaded {len(docs)} chunks")
     return docs, vs
 
 

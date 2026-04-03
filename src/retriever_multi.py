@@ -4,7 +4,7 @@ Multi-Book HyDE Retriever.
 Searches across all ingested medical book collections simultaneously:
 1. Generate ONE hypothetical document (HyDE) for the query — shared across all books.
 2. Embed query + hyp_doc ONCE (2 API calls total, not 8).
-3. For each book collection: retrieve via dense(hyp_emb) + dense(query_emb) + BM25(query),
+3. For each book collection: retrieve via dense(hyp_emb) + dense(query_emb),
    merge per-book results via RRF.  All 4 books run in parallel.
 4. Globally merge all per-book result lists via RRF.
 5. Cross-encoder rerank the top-MAX_RERANK candidates and return top K.
@@ -16,8 +16,8 @@ Each returned Document has:
 
 Key performance design:
   - HyDE + embedding API calls happen BEFORE threads start (sequential but minimal: 2 calls)
-  - Threads do only local work: ChromaDB vector search (disk) + BM25 (CPU in-memory)
-  - No OpenAI API calls inside threads → latency is max(4 books) not sum(8 API calls)
+  - Threads do only local work: ChromaDB vector search (disk) — no OpenAI calls inside threads
+  - Latency is max(4 books) not sum(8 API calls)
 """
 
 import time
@@ -29,12 +29,12 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 
-from retriever_hybrid import load_all_chunks, reciprocal_rank_fusion
+from retriever_hybrid import load_vectorstore, reciprocal_rank_fusion
 from retriever_rerank import get_cross_encoder
 
 log = logging.getLogger("book_rag")
 
-FETCH_K_PER_BOOK = 10      # candidates fetched per source (dense-hyp / dense-orig / bm25) per book
+FETCH_K_PER_BOOK = 10      # candidates fetched per signal (dense-hyp / dense-orig) per book
 FINAL_K = 4                # final docs returned after global rerank
 MAX_RERANK = 30            # cap global RRF pool before cross-encoder (keeps rerank fast)
 RERANK_SCORE_THRESHOLD = -1.0  # cross-encoder logit floor — chunks below this are filtered as noise
@@ -55,36 +55,30 @@ def _retrieve_one_book(
     br: dict,
     hyp_emb: list,
     query_emb: list,
-    query: str,
     fetch_k: int,
 ) -> List[Document]:
     """
-    Retrieve from a single book using 3 signals: dense(hyp_emb), dense(query_emb), BM25(query).
-    Uses pre-computed embeddings — no OpenAI API calls here. Pure local I/O + CPU.
+    Retrieve from a single book using 2 dense signals: dense(hyp_emb) + dense(query_emb).
+    Uses pre-computed embeddings — no OpenAI API calls here. Pure local disk I/O.
     Runs inside a thread pool — all books execute concurrently.
     """
     t0 = time.perf_counter()
     vectorstore = br["vectorstore"]
-    bm25        = br["bm25"]
     collection  = br["collection"]
 
-    bm25.k = fetch_k
-
     # similarity_search_by_vector skips embedding — uses pre-computed vector directly
-    with ThreadPoolExecutor(max_workers=3, thread_name_prefix=f"sig_{collection[:6]}") as sig_pool:
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix=f"sig_{collection[:6]}") as sig_pool:
         f_hyp  = sig_pool.submit(vectorstore.similarity_search_by_vector, hyp_emb,   k=fetch_k)
         f_orig = sig_pool.submit(vectorstore.similarity_search_by_vector, query_emb, k=fetch_k)
-        f_bm25 = sig_pool.submit(bm25.invoke, query)
         hyp_results  = f_hyp.result()
         orig_results = f_orig.result()
-        bm25_results = f_bm25.result()
 
     t_book = time.perf_counter() - t0
 
-    for doc in hyp_results + orig_results + bm25_results:
+    for doc in hyp_results + orig_results:
         doc.metadata.setdefault("collection", collection)
 
-    merged = reciprocal_rank_fusion([hyp_results, orig_results, bm25_results])
+    merged = reciprocal_rank_fusion([hyp_results, orig_results])
 
     log.debug(
         f"Book retrieval done: {collection}",
@@ -93,7 +87,6 @@ def _retrieve_one_book(
             "collection": collection,
             "hyp_hits": len(hyp_results),
             "orig_hits": len(orig_results),
-            "bm25_hits": len(bm25_results),
             "rrf_merged": len(merged),
             "latency_book_s": round(t_book, 3),
         },
@@ -110,7 +103,7 @@ class MultiBookHyDERetriever(BaseRetriever):
     using only pre-computed vectors — zero OpenAI API calls inside threads.
     """
 
-    # Each entry: {"collection": str, "bm25": BM25Retriever, "vectorstore": Chroma}
+    # Each entry: {"collection": str, "vectorstore": Chroma}
     book_retrievers: List[Any]
     llm: Any
     embeddings: Any   # shared OpenAIEmbeddings instance for query + hyp_doc
@@ -188,7 +181,7 @@ class MultiBookHyDERetriever(BaseRetriever):
         ) as pool:
             futures = {
                 pool.submit(
-                    _retrieve_one_book, br, hyp_emb, query_emb, query, self.fetch_k
+                    _retrieve_one_book, br, hyp_emb, query_emb, self.fetch_k
                 ): br["collection"]
                 for br in self.book_retrievers
             }
@@ -279,26 +272,22 @@ def build_multi_book_retriever(
                 (pass the output of medical_books() from books.py)
     Skips collections that have no vectors yet (not yet ingested).
     """
-    from langchain_community.retrievers import BM25Retriever
-
     # One shared embeddings instance — used to pre-compute query + hyp_doc vectors
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
 
     book_retrievers = []
     for info in books_info:
         collection = info["collection"]
-        docs, vectorstore = load_all_chunks(collection)
-        if not docs:
+        count, vectorstore = load_vectorstore(collection)
+        if not count:
             print(f"  [multi] Skipping '{collection}' — no vectors found (not yet ingested?)")
             continue
 
-        bm25 = BM25Retriever.from_documents(docs, k=fetch_k)
         book_retrievers.append({
             "collection": collection,
-            "bm25":        bm25,
-            "vectorstore": vectorstore,   # stored for similarity_search_by_vector
+            "vectorstore": vectorstore,
         })
-        print(f"  [multi] Loaded '{collection}' ({len(docs)} chunks)")
+        print(f"  [multi] Loaded '{collection}' ({count} chunks)")
 
     if not book_retrievers:
         raise RuntimeError("No ingested book collections found. Run: python src/ingest.py --book <key>")
