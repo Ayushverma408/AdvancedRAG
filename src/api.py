@@ -111,6 +111,12 @@ class QueryRequest(BaseModel):
     answer_depth: str = "balanced"           # "concise" | "balanced" | "comprehensive"
     answer_tone: str = "teaching"            # "textbook" | "teaching"
     answer_restrictiveness: str = "guided"   # "strict" | "guided" | "open"
+    mode: str = "standard"                   # "standard" | "viva"
+
+
+class QuizRequest(BaseModel):
+    topic: str
+    count: int = 5   # number of MCQs to generate (clamped 1-10)
 
 
 class ChunkResponse(BaseModel):
@@ -293,17 +299,27 @@ async def query_stream(req: QueryRequest, request: Request):
         # ── Phase 2: Generation ───────────────────────────────────────────
         yield _sse({"phase": "generating"})
 
-        from chain import format_docs, build_answer_system_prompt
-        context   = format_docs(docs)
+        from chain import format_docs, build_answer_system_prompt, build_viva_system_prompt
+        from pubmed import search_pubmed
+        context      = format_docs(docs)
         _, generator = get_or_build_multi_pipeline()
 
-        system_prompt = build_answer_system_prompt(
-            depth=req.answer_depth,
-            tone=req.answer_tone,
-            restrictiveness=req.answer_restrictiveness,
-            profile_prompt=req.profile_prompt,
-            context=context,
-        )
+        if req.mode == "viva":
+            system_prompt = build_viva_system_prompt(
+                context=context,
+                profile_prompt=req.profile_prompt,
+            )
+        else:
+            system_prompt = build_answer_system_prompt(
+                depth=req.answer_depth,
+                tone=req.answer_tone,
+                restrictiveness=req.answer_restrictiveness,
+                profile_prompt=req.profile_prompt,
+                context=context,
+            )
+
+        # Start PubMed search in parallel — finishes while LLM is generating
+        pubmed_future = loop.run_in_executor(None, lambda: search_pubmed(question, max_results=3))
 
         t1 = time.perf_counter()
         answer_tokens = []
@@ -322,6 +338,12 @@ async def query_stream(req: QueryRequest, request: Request):
         t_total = round(t_retrieval + t_llm, 3)
         cost    = _estimate_cost(question, chunks, answer)
 
+        # Collect PubMed results (with timeout — should already be done)
+        try:
+            pubmed_refs = await asyncio.wait_for(pubmed_future, timeout=3.0)
+        except Exception:
+            pubmed_refs = []
+
         log.info("Query complete",
                  extra={"event": "query_complete", "request_id": request_id,
                         "pipeline": PIPELINE_MODE, "question": question,
@@ -338,7 +360,9 @@ async def query_stream(req: QueryRequest, request: Request):
             "chunks":              chunks,
             "pages":               pages,
             "images":              images,
+            "pubmed_refs":         pubmed_refs,
             "pipeline":            pipeline_used,
+            "mode":                req.mode,
             "latency_retrieval_s": t_retrieval,
             "latency_llm_s":       t_llm,
             "latency_total_s":     t_total,
@@ -412,6 +436,117 @@ def query(req: QueryRequest):
         latency_llm_s=t_llm,
         latency_total_s=t_total,
     )
+
+
+# ── Quiz / MCQ generation ─────────────────────────────────────────────────────
+
+@app.post("/quiz/stream")
+async def quiz_stream(req: QuizRequest, request: Request):
+    topic = req.topic.strip()
+    if not topic:
+        raise HTTPException(status_code=400, detail="Topic cannot be empty")
+    count = max(1, min(req.count, 10))
+
+    request_id = str(uuid.uuid4())[:8]
+    log.info("Quiz request received",
+             extra={"event": "quiz_start", "request_id": request_id, "topic": topic, "count": count})
+
+    async def event_gen():
+        loop = asyncio.get_event_loop()
+
+        yield _sse({"phase": "retrieving"})
+
+        t0 = time.perf_counter()
+        try:
+            retriever, _ = get_or_build_multi_pipeline()
+            retrieve_future = loop.run_in_executor(
+                None,
+                lambda: retriever.retrieve(topic, use_hyde=True),
+            )
+            docs, _ = await retrieve_future
+        except Exception:
+            log.error("Quiz retrieval failed",
+                      extra={"event": "quiz_retrieval_error", "request_id": request_id,
+                             "topic": topic}, exc_info=True)
+            yield _sse({"phase": "error", "msg": "Retrieval failed"})
+            return
+        t_retrieval = round(time.perf_counter() - t0, 3)
+
+        chunks = [
+            {
+                "page":       doc.metadata.get("page", "?"),
+                "source":     doc.metadata.get("source", ""),
+                "collection": doc.metadata.get("collection", ""),
+                "content":    doc.page_content.strip(),
+            }
+            for doc in docs
+        ]
+        yield _sse({"phase": "retrieved", "chunks": chunks, "latency_retrieval_s": t_retrieval})
+        yield _sse({"phase": "generating"})
+
+        from chain import format_docs, build_mcq_system_prompt
+        from langchain_openai import ChatOpenAI
+        from langchain_core.prompts import ChatPromptTemplate
+        from langchain_core.output_parsers import StrOutputParser
+
+        context       = format_docs(docs)
+        system_prompt = build_mcq_system_prompt(topic, count, context)
+
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", "{system_prompt}"),
+            ("human", "Generate {count} MCQs on: {topic}"),
+        ])
+        llm   = ChatOpenAI(model="gpt-4o", temperature=0.3)
+        chain = prompt | llm | StrOutputParser()
+
+        t1 = time.perf_counter()
+        raw_tokens: list[str] = []
+        try:
+            async for token in chain.astream(
+                {"system_prompt": system_prompt, "topic": topic, "count": count}
+            ):
+                raw_tokens.append(token)
+                # no token SSE for quiz — frontend shows a spinner until done
+        except Exception:
+            log.error("Quiz generation failed",
+                      extra={"event": "quiz_gen_error", "request_id": request_id,
+                             "topic": topic}, exc_info=True)
+            yield _sse({"phase": "error", "msg": "Generation failed"})
+            return
+        t_llm = round(time.perf_counter() - t1, 3)
+
+        raw = "".join(raw_tokens).strip()
+        # Strip markdown code fences GPT sometimes adds
+        if raw.startswith("```"):
+            raw = "\n".join(raw.split("\n")[1:])
+        if raw.endswith("```"):
+            raw = "\n".join(raw.split("\n")[:-1])
+        raw = raw.strip()
+
+        mcqs: list = []
+        try:
+            mcqs = json.loads(raw)
+        except Exception:
+            log.warning("Quiz JSON parse failed",
+                        extra={"event": "quiz_parse_error", "request_id": request_id,
+                               "raw_preview": raw[:200]})
+
+        log.info("Quiz complete",
+                 extra={"event": "quiz_complete", "request_id": request_id,
+                        "topic": topic, "mcqs_generated": len(mcqs),
+                        "latency_retrieval_s": t_retrieval, "latency_llm_s": t_llm})
+
+        yield _sse({
+            "phase":               "done",
+            "mcqs":                mcqs,
+            "chunks":              chunks,
+            "topic":               topic,
+            "latency_retrieval_s": t_retrieval,
+            "latency_llm_s":       t_llm,
+            "latency_total_s":     round(t_retrieval + t_llm, 3),
+        })
+
+    return StreamingResponse(event_gen(), media_type="text/event-stream")
 
 
 # ── PDF page preview ──────────────────────────────────────────────────────────

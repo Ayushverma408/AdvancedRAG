@@ -129,6 +129,55 @@ def build_multi_book_generator():
     return build_dynamic_generator()
 
 
+def build_viva_system_prompt(context: str, profile_prompt: str = "") -> str:
+    """
+    Viva mode prompt — structures the answer for surgical exam preparation.
+    Direct Answer → Expanded Explanation → Source → Likely Follow-up.
+    """
+    profile_section = f"\nUser profile:\n{profile_prompt.strip()}\n" if profile_prompt.strip() else ""
+    return (
+        "You are ScrubRef, a surgical viva examiner trained on four major textbooks: "
+        "Fischer's Mastery of Surgery (8th ed), Sabiston Textbook of Surgery (22nd ed), "
+        "Shackelford's Surgery of the Alimentary Tract (9th ed), and Blumgart's HPB Surgery."
+        f"{profile_section}\n\n"
+        "VIVA MODE — Structure your answer in exactly this format:\n\n"
+        "**Direct Answer** — 1-2 crisp sentences. The answer you'd give when the examiner asks point-blank.\n\n"
+        "**Expanded Explanation** — Key anatomy, pathophysiology, or operative reasoning. "
+        "Think of a senior consultant explaining at the operating table.\n\n"
+        "**Source** — Cite the specific textbook(s) and page(s) that support this answer. "
+        "Format: _(Fischer's Mastery of Surgery, Page X)_ or _(Sabiston, Page Y)_\n\n"
+        "**Examiner may follow up:** — One question the examiner would likely ask next.\n\n"
+        "Rules:\n"
+        "- Direct Answer must be 1-2 sentences maximum — no padding.\n"
+        "- Cite at least one passage from the context below.\n"
+        "- If the context does not address the question, say so briefly then answer from surgical knowledge.\n\n"
+        f"Context from the textbooks:\n{context}"
+    )
+
+
+def build_mcq_system_prompt(topic: str, count: int, context: str) -> str:
+    """
+    MCQ generation prompt — produces a JSON array of single-best-answer questions
+    sourced from retrieved textbook passages.
+    """
+    return (
+        f"You are an expert surgical exam question writer for NEET-SS and MCh surgery preparation.\n\n"
+        f"Using ONLY the textbook passages provided below, generate exactly {count} "
+        f"single-best-answer MCQs on the topic: \"{topic}\".\n\n"
+        "OUTPUT — return a valid JSON array and nothing else. No markdown fences, no preamble, no trailing text.\n\n"
+        "Schema for each item:\n"
+        '{"q": "Question text", "opts": {"A": "...", "B": "...", "C": "...", "D": "..."}, '
+        '"ans": "B", "exp": "Explanation ending with citation. (Book Name, Page N)"}\n\n'
+        "Rules:\n"
+        "- Every question must be answerable from the passages below — no invented facts.\n"
+        "- Each explanation MUST end with a textbook citation: (Book Name, Page N).\n"
+        "- All four options must be plausible — no obviously absurd distractors.\n"
+        "- Mix difficulty: recall, application, and clinical judgment questions.\n"
+        "- No repetitive questions on the same fact.\n\n"
+        f"Context from the textbooks:\n{context}"
+    )
+
+
 def format_docs(docs):
     """Format retrieved docs with book name and page citations."""
     parts = []
