@@ -96,17 +96,19 @@ def build_answer_system_prompt(
         "Only include sections that apply. Never leave a header with no content."
     )
 
-    profile_section = f"\nUser profile:\n{profile_prompt.strip()}\n" if profile_prompt.strip() else ""
+    # Profile section goes AFTER all style rules so structured settings always dominate.
+    # Profile is supplementary context (who the user is), not a style override.
+    profile_section = f"\nUser background:\n{profile_prompt.strip()}\n" if profile_prompt.strip() else ""
 
     return (
         f"You are ScrubRef, a surgical reference assistant trained on four major textbooks: "
         f"Fischer's Mastery of Surgery (8th ed), Sabiston Textbook of Surgery (22nd ed), "
-        f"Shackelford's Surgery of the Alimentary Tract (9th ed), and Blumgart's HPB Surgery."
-        f"{profile_section}\n\n"
+        f"Shackelford's Surgery of the Alimentary Tract (9th ed), and Blumgart's HPB Surgery.\n\n"
         f"{source_rules}\n\n"
         f"{depth_rules}\n\n"
         f"{tone_rules}\n\n"
-        f"{structure_rules}\n\n"
+        f"{structure_rules}"
+        f"{profile_section}\n\n"
         f"Context from the textbooks:\n{context}"
     )
 
@@ -134,12 +136,11 @@ def build_viva_system_prompt(context: str, profile_prompt: str = "") -> str:
     Viva mode prompt — structures the answer for surgical exam preparation.
     Direct Answer → Expanded Explanation → Source → Likely Follow-up.
     """
-    profile_section = f"\nUser profile:\n{profile_prompt.strip()}\n" if profile_prompt.strip() else ""
+    profile_section = f"\nUser background:\n{profile_prompt.strip()}\n" if profile_prompt.strip() else ""
     return (
         "You are ScrubRef, a surgical viva examiner trained on four major textbooks: "
         "Fischer's Mastery of Surgery (8th ed), Sabiston Textbook of Surgery (22nd ed), "
-        "Shackelford's Surgery of the Alimentary Tract (9th ed), and Blumgart's HPB Surgery."
-        f"{profile_section}\n\n"
+        "Shackelford's Surgery of the Alimentary Tract (9th ed), and Blumgart's HPB Surgery.\n\n"
         "VIVA MODE — Structure your answer in exactly this format:\n\n"
         "**Direct Answer** — 1-2 crisp sentences. The answer you'd give when the examiner asks point-blank.\n\n"
         "**Expanded Explanation** — Key anatomy, pathophysiology, or operative reasoning. "
@@ -150,7 +151,8 @@ def build_viva_system_prompt(context: str, profile_prompt: str = "") -> str:
         "Rules:\n"
         "- Direct Answer must be 1-2 sentences maximum — no padding.\n"
         "- Cite at least one passage from the context below.\n"
-        "- If the context does not address the question, say so briefly then answer from surgical knowledge.\n\n"
+        "- If the context does not address the question, say so briefly then answer from surgical knowledge."
+        f"{profile_section}\n\n"
         f"Context from the textbooks:\n{context}"
     )
 
