@@ -34,7 +34,7 @@ from retriever_rerank import get_cross_encoder
 
 log = logging.getLogger("book_rag")
 
-FETCH_K_PER_BOOK = 10      # candidates fetched per signal (dense-hyp / dense-orig) per book
+FETCH_K_PER_BOOK = 15      # candidates fetched per signal per book (bumped from 10 to compensate for single-signal mode)
 FINAL_K = 4                # final docs returned after global rerank
 MAX_RERANK = 30            # cap global RRF pool before cross-encoder (keeps rerank fast)
 RERANK_SCORE_THRESHOLD = -1.0  # cross-encoder logit floor — chunks below this are filtered as noise
@@ -56,37 +56,43 @@ def _retrieve_one_book(
     hyp_emb: list,
     query_emb: list,
     fetch_k: int,
+    dual_signal: bool = True,
 ) -> List[Document]:
     """
-    Retrieve from a single book using 2 dense signals: dense(hyp_emb) + dense(query_emb).
-    Uses pre-computed embeddings — no OpenAI API calls here. Pure local disk I/O.
-    Runs inside a thread pool — all books execute concurrently.
+    Retrieve from a single book.
+
+    dual_signal=True  (HyDE mode)  — 2 dense signals: dense(hyp_emb) + dense(query_emb)
+    dual_signal=False (fast mode)  — 1 dense signal:  dense(query_emb) only
     """
     t0 = time.perf_counter()
     vectorstore = br["vectorstore"]
     collection  = br["collection"]
 
-    # similarity_search_by_vector skips embedding — uses pre-computed vector directly
-    with ThreadPoolExecutor(max_workers=2, thread_name_prefix=f"sig_{collection[:6]}") as sig_pool:
-        f_hyp  = sig_pool.submit(vectorstore.similarity_search_by_vector, hyp_emb,   k=fetch_k)
-        f_orig = sig_pool.submit(vectorstore.similarity_search_by_vector, query_emb, k=fetch_k)
-        hyp_results  = f_hyp.result()
-        orig_results = f_orig.result()
+    if dual_signal:
+        # similarity_search_by_vector skips embedding — uses pre-computed vector directly
+        with ThreadPoolExecutor(max_workers=2, thread_name_prefix=f"sig_{collection[:6]}") as sig_pool:
+            f_hyp  = sig_pool.submit(vectorstore.similarity_search_by_vector, hyp_emb,   k=fetch_k)
+            f_orig = sig_pool.submit(vectorstore.similarity_search_by_vector, query_emb, k=fetch_k)
+            hyp_results  = f_hyp.result()
+            orig_results = f_orig.result()
+        result_lists = [hyp_results, orig_results]
+    else:
+        orig_results = vectorstore.similarity_search_by_vector(query_emb, k=fetch_k)
+        result_lists = [orig_results]
 
     t_book = time.perf_counter() - t0
 
-    for doc in hyp_results + orig_results:
+    for doc in [d for lst in result_lists for d in lst]:
         doc.metadata.setdefault("collection", collection)
 
-    merged = reciprocal_rank_fusion([hyp_results, orig_results])
+    merged = reciprocal_rank_fusion(result_lists)
 
     log.debug(
         f"Book retrieval done: {collection}",
         extra={
             "event": "book_retrieval_done",
             "collection": collection,
-            "hyp_hits": len(hyp_results),
-            "orig_hits": len(orig_results),
+            "signals": len(result_lists),
             "rrf_merged": len(merged),
             "latency_book_s": round(t_book, 3),
         },
@@ -181,7 +187,7 @@ class MultiBookHyDERetriever(BaseRetriever):
         ) as pool:
             futures = {
                 pool.submit(
-                    _retrieve_one_book, br, hyp_emb, query_emb, self.fetch_k
+                    _retrieve_one_book, br, hyp_emb, query_emb, self.fetch_k, use_hyde
                 ): br["collection"]
                 for br in self.book_retrievers
             }

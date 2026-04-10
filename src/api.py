@@ -106,7 +106,7 @@ class QueryRequest(BaseModel):
     book_key: Optional[str] = None   # ignored — multi-book mode searches all books
     pipeline: Optional[str] = None   # ignored — pipeline is fixed to multi-book-hyde
     free_mode: bool = False           # skip RAG; answer directly from GPT-4o knowledge
-    use_hyde: bool = True             # False = fast mode: skip HyDE, embed query only (~4s faster)
+    use_hyde: bool = False            # HyDE disabled by default — saves ~3-4s per query
     profile_prompt: str = ""          # optional user profile context injected into the system prompt
     answer_depth: str = "balanced"           # "concise" | "balanced" | "comprehensive"
     answer_tone: str = "teaching"            # "textbook" | "teaching"
@@ -405,10 +405,18 @@ def query(req: QueryRequest):
         raise HTTPException(status_code=500, detail="Retrieval failed")
     t_retrieval = round(time.perf_counter() - t0, 3)
 
-    from chain import format_docs
+    from chain import format_docs, build_answer_system_prompt
+    context       = format_docs(docs)
+    system_prompt = build_answer_system_prompt(
+        depth=req.answer_depth,
+        tone=req.answer_tone,
+        restrictiveness=req.answer_restrictiveness,
+        profile_prompt=req.profile_prompt,
+        context=context,
+    )
     t1 = time.perf_counter()
     try:
-        answer = generator.invoke({"context": format_docs(docs), "question": question})
+        answer = generator.invoke({"system_prompt": system_prompt, "question": question})
     except Exception:
         log.error("Generation failed", extra={"event": "llm_error",
                   "request_id": request_id, "question": question}, exc_info=True)
@@ -461,7 +469,7 @@ async def quiz_stream(req: QuizRequest, request: Request):
             retriever, _ = get_or_build_multi_pipeline()
             retrieve_future = loop.run_in_executor(
                 None,
-                lambda: retriever.retrieve(topic, use_hyde=True),
+                lambda: retriever.retrieve(topic, use_hyde=False),
             )
             docs, _ = await retrieve_future
         except Exception:
